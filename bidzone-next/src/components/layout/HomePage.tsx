@@ -90,9 +90,30 @@ export function HomePage() {
 
         <div className="home-page__center">
           <section className="home-page__hero">
-            <h2 className="home-page__hero-title">{t('hero.title')}</h2>
+            <div className="home-page__hero-eyebrow">
+              <span className="home-page__hero-eyebrow-dot" aria-hidden />
+              Live Auctions Now
+            </div>
+            <h2 className="home-page__hero-title">
+              Bid Smart,{' '}
+              <span className="home-page__hero-title-gold">Win Big</span>
+            </h2>
             <p className="home-page__hero-sub">{t('hero.sub')}</p>
             <button type="button" className="home-page__hero-cta">{t('hero.cta')}</button>
+            <div className="home-page__hero-stats">
+              <div>
+                <div className="home-page__hero-stat-value">12K+</div>
+                <div className="home-page__hero-stat-label">Active Auctions</div>
+              </div>
+              <div>
+                <div className="home-page__hero-stat-value">$4.2M</div>
+                <div className="home-page__hero-stat-label">Total Value Bid</div>
+              </div>
+              <div>
+                <div className="home-page__hero-stat-value">98K</div>
+                <div className="home-page__hero-stat-label">Happy Bidders</div>
+              </div>
+            </div>
           </section>
 
           <main className="home-page__main">
@@ -134,7 +155,9 @@ export function HomePage() {
                   const href = `/home?${next.toString()}`
                   return (
                     <Link key={c.slug} href={href} className="home-page__category-card">
-                      <Icon size={28} strokeWidth={1.5} className="home-page__category-icon" aria-hidden />
+                      <div className="home-page__category-icon">
+                        <Icon size={22} strokeWidth={1.75} aria-hidden />
+                      </div>
                       <span className="home-page__category-name">{t(`cat.${c.slug}` as 'cat.electronics')}</span>
                       <span className="home-page__category-count">{t('category.items', { count: c.count })}</span>
                     </Link>

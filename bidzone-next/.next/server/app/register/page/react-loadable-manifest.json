@@ -1,9 +1,0 @@
-{
-  "[project]/src/components/auth/GoogleSignInButton.tsx [app-client] (ecmascript, next/dynamic entry)": {
-    "id": "[project]/src/components/auth/GoogleSignInButton.tsx [app-client] (ecmascript, next/dynamic entry)",
-    "files": [
-      "static/chunks/src_components_auth_GoogleSignInButton_tsx_9cca84fc._.js",
-      "static/chunks/src_components_auth_GoogleSignInButton_tsx_69b37ae6._.js"
-    ]
-  }
-}

@@ -1,4 +1,5 @@
 'use client'
+import React from 'react'
 import { ChevronRight, Gift, Search, Truck, Trophy } from 'lucide-react'
 import { useI18n } from '@/context/I18nContext'
 
@@ -29,20 +30,22 @@ export function HomeServiceAndGuide() {
 
         <ol className="home-service-guide__steps" aria-label={t('home.flow.title')}>
           {FLOW_ICONS.map((Icon, i) => (
-            <li key={FLOW_TITLE_KEYS[i]} className="home-service-guide__step">
+            <React.Fragment key={FLOW_TITLE_KEYS[i]}>
               {i > 0 && (
-                <span className="home-service-guide__arrow" aria-hidden>
-                  <ChevronRight size={22} strokeWidth={2} />
-                </span>
+                <li className="home-service-guide__arrow-item" aria-hidden role="presentation">
+                  <ChevronRight size={20} strokeWidth={2.5} />
+                </li>
               )}
-              <div className="home-service-guide__step-inner">
-                <div className="home-service-guide__icon-wrap">
-                  <Icon size={28} strokeWidth={1.75} className="home-service-guide__icon" aria-hidden />
+              <li className="home-service-guide__step">
+                <div className="home-service-guide__step-inner">
+                  <div className="home-service-guide__icon-wrap">
+                    <Icon size={26} strokeWidth={1.75} className="home-service-guide__icon" aria-hidden />
+                  </div>
+                  <h3 className="home-service-guide__step-title">{t(FLOW_TITLE_KEYS[i])}</h3>
+                  <p className="home-service-guide__step-desc">{t(FLOW_DESC_KEYS[i])}</p>
                 </div>
-                <h3 className="home-service-guide__step-title">{t(FLOW_TITLE_KEYS[i])}</h3>
-                <p className="home-service-guide__step-desc">{t(FLOW_DESC_KEYS[i])}</p>
-              </div>
-            </li>
+              </li>
+            </React.Fragment>
           ))}
         </ol>
       </section>
