@@ -311,7 +311,7 @@ export function OnboardingBidderPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <Link href="/onboarding" className="ob-back">
               <ArrowLeft size={15} />
-              {t('onboard.backRoles')}
+              Back to role choice
             </Link>
             <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--bz-text-muted)' }}>
               Have an account?{' '}

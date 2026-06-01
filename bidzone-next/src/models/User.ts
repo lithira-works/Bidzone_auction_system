@@ -13,6 +13,7 @@ export interface IUser extends Document {
   kycStatus: 'not_required' | 'pending' | 'verified' | 'rejected'
   listingAllowed: boolean
   fraudCheckPassed: boolean
+  avatarUrl: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -34,6 +35,7 @@ const UserSchema = new Schema<IUser>(
     },
     listingAllowed: { type: Boolean, default: false },
     fraudCheckPassed: { type: Boolean, default: false },
+    avatarUrl: { type: String, default: null },
   },
   { timestamps: true },
 )

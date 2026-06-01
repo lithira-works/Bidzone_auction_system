@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, ArrowRight, Check, CheckCircle2, Eye, EyeOff,
   Gavel, HelpCircle, IdCard, Lock, Mail, MapPin, Phone,
-  Shield, ShieldCheck, Star, Store,
+  Shield, ShieldCheck, Star, User,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useI18n } from '@/context/I18nContext'
@@ -285,8 +285,8 @@ export function SellerKycWizard(props: Props) {
           {/* ── STEP: Account ── */}
           {step === 'account' && props.mode === 'new' && (
             <>
-              <h2 className="ob-role__panel-heading" style={{ marginBottom: '0.35rem' }}>Account details</h2>
-              <p className="ob-role__panel-sub" style={{ marginBottom: '1.5rem' }}>Create your seller login credentials.</p>
+              <h2 className="ob-role__panel-heading">Account details</h2>
+              <p className="ob-role__panel-sub">Create your seller login credentials.</p>
 
               <form className="ob-form" onSubmit={onAccountNext} noValidate>
                 {regError && (
@@ -299,8 +299,9 @@ export function SellerKycWizard(props: Props) {
                 <label className="ob-field">
                   <span className="ob-label">{t('login.name')}</span>
                   <div className="ob-input-wrap">
-                    <span className="ob-input-icon"><Store size={17} /></span>
+                    <span className="ob-input-icon"><User size={17} /></span>
                     <input className="ob-input" type="text" required autoFocus
+                      placeholder="Your full name"
                       value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" />
                   </div>
                 </label>
@@ -310,6 +311,7 @@ export function SellerKycWizard(props: Props) {
                   <div className="ob-input-wrap">
                     <span className="ob-input-icon"><Mail size={17} /></span>
                     <input className="ob-input" type="email" required
+                      placeholder="your@email.com"
                       value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
                   </div>
                 </label>
@@ -322,6 +324,7 @@ export function SellerKycWizard(props: Props) {
                       className="ob-input ob-input--pad-right"
                       type={showPw ? 'text' : 'password'}
                       required minLength={6}
+                      placeholder="Min. 6 characters"
                       value={password} onChange={(e) => setPassword(e.target.value)}
                       autoComplete="new-password"
                     />
@@ -337,6 +340,7 @@ export function SellerKycWizard(props: Props) {
                   <div className="ob-input-wrap">
                     <span className="ob-input-icon"><MapPin size={17} /></span>
                     <input className="ob-input" type="text" required
+                      placeholder="Number, street, unit"
                       value={address} onChange={(e) => setAddress(e.target.value)} autoComplete="street-address" />
                   </div>
                 </label>
@@ -346,7 +350,8 @@ export function SellerKycWizard(props: Props) {
                   <div className="ob-input-wrap">
                     <span className="ob-input-icon"><MapPin size={17} /></span>
                     <input className="ob-input" type="text" required
-                      value={city} onChange={(e) => setCity(e.target.value)} />
+                      placeholder="Your city"
+                      value={city} onChange={(e) => setCity(e.target.value)} autoComplete="address-level2" />
                   </div>
                 </label>
 
@@ -360,8 +365,8 @@ export function SellerKycWizard(props: Props) {
           {/* ── STEP: Phone ── */}
           {step === 'phone' && (
             <>
-              <h2 className="ob-role__panel-heading" style={{ marginBottom: '0.35rem' }}>Phone verification</h2>
-              <p className="ob-role__panel-sub" style={{ marginBottom: '1.5rem' }}>We'll send a one-time code to confirm your number.</p>
+              <h2 className="ob-role__panel-heading">Phone verification</h2>
+              <p className="ob-role__panel-sub">We&apos;ll send a one-time code to confirm your number.</p>
 
               <form className="ob-form" onSubmit={onPhoneNext} noValidate>
                 <div className="ob-hint">
@@ -394,8 +399,8 @@ export function SellerKycWizard(props: Props) {
           {/* ── STEP: OTP ── */}
           {step === 'otp' && (
             <>
-              <h2 className="ob-role__panel-heading" style={{ marginBottom: '0.35rem' }}>Enter your code</h2>
-              <p className="ob-role__panel-sub" style={{ marginBottom: '1.5rem' }}>Check your phone for the 6-digit verification code.</p>
+              <h2 className="ob-role__panel-heading">Enter your code</h2>
+              <p className="ob-role__panel-sub">Check your phone for the 6-digit verification code.</p>
 
               <form className="ob-form" onSubmit={onOtpSubmit} noValidate>
                 <div className="ob-hint">
@@ -436,8 +441,8 @@ export function SellerKycWizard(props: Props) {
           {/* ── STEP: NIC Upload ── */}
           {step === 'nic' && (
             <>
-              <h2 className="ob-role__panel-heading" style={{ marginBottom: '0.35rem' }}>Identity document</h2>
-              <p className="ob-role__panel-sub" style={{ marginBottom: '1.5rem' }}>Upload a clear photo of your NIC or passport.</p>
+              <h2 className="ob-role__panel-heading">Identity document</h2>
+              <p className="ob-role__panel-sub">Upload a clear photo of your NIC or passport.</p>
 
               <form className="ob-form" onSubmit={onNicNext} noValidate>
                 <div className="ob-hint">
@@ -555,12 +560,12 @@ export function SellerKycWizard(props: Props) {
               {props.mode === 'new' ? (
                 <Link href="/onboarding" className="ob-back">
                   <ArrowLeft size={15} />
-                  {t('onboard.backRoles')}
+                  Back to role choice
                 </Link>
               ) : (
                 <Link href="/home" className="ob-back">
                   <ArrowLeft size={15} />
-                  {t('onboard.backHome')}
+                  Back to auctions
                 </Link>
               )}
               <span style={{ fontSize: '0.8rem', color: 'var(--bz-text-dim)' }}>

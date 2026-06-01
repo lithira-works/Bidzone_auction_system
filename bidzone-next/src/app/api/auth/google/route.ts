@@ -7,8 +7,8 @@ import { toUserProfile } from '@/lib/userProfile'
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as { email?: string; name?: string; sub?: string }
-    const { email, name, sub } = body
+    const body = (await req.json()) as { email?: string; name?: string; sub?: string; picture?: string }
+    const { email, name, sub, picture } = body
 
     if (!email?.trim()) {
       return NextResponse.json({ error: 'Missing email' }, { status: 400 })
@@ -35,7 +35,12 @@ export async function POST(req: NextRequest) {
         kycStatus: 'not_required',
         listingAllowed: false,
         fraudCheckPassed: false,
+        avatarUrl: picture ?? null,
       })
+    } else if (picture && user.avatarUrl !== picture) {
+      /* Keep profile picture in sync on each login */
+      user.avatarUrl = picture
+      await user.save()
     }
 
     const token = signToken({

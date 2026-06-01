@@ -42,7 +42,7 @@ type AuthContextValue = {
   canAccessSellerTools: boolean
   login: (email: string, password: string) => Promise<'ok' | 'invalid'>
   loginWithGoogle: (idTokenCredential: string) => Promise<'ok' | 'invalid'>
-  loginWithGoogleProfile: (profile: { email: string; name?: string }) => Promise<'ok' | 'invalid'>
+  loginWithGoogleProfile: (profile: { email: string; name?: string; picture?: string }) => Promise<'ok' | 'invalid'>
   logout: () => void
   registerBidder: (input: BidderRegisterInput) => Promise<'ok' | 'email_taken'>
   registerNewVerifiedSeller: (input: SellerRegisterInput) => Promise<'ok' | 'email_taken'>
@@ -100,11 +100,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loginWithGoogleProfile = useCallback(
-    async (profile: { email: string; name?: string }): Promise<'ok' | 'invalid'> => {
+    async (profile: { email: string; name?: string; picture?: string }): Promise<'ok' | 'invalid'> => {
       try {
         const { token, user: u } = await api.post<AuthResponse>('/auth/google', {
           email: profile.email,
           name: profile.name,
+          picture: profile.picture,
         })
         setToken(token)
         setSessionUserId(u.id)

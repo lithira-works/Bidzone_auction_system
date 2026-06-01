@@ -20,6 +20,7 @@ export type UserProfile = {
   listingAllowed: boolean
   fraudCheckPassed: boolean
   createdAt: string
+  avatarUrl?: string | null
 }
 
 export const DEMO_OTP_CODE = '123456'

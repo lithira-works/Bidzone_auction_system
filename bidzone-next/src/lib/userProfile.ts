@@ -21,5 +21,6 @@ export function toUserProfile(user: IUser): UserProfile {
     listingAllowed: user.listingAllowed,
     fraudCheckPassed: user.fraudCheckPassed,
     createdAt: user.createdAt.toISOString(),
+    avatarUrl: user.avatarUrl ?? null,
   }
 }

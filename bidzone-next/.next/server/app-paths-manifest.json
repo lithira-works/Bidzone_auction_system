@@ -1,6 +1,6 @@
 {
-  "/onboarding/page": "app/onboarding/page.js",
-  "/page": "app/page.js",
-  "/onboarding/seller/page": "app/onboarding/seller/page.js",
-  "/onboarding/bidder/page": "app/onboarding/bidder/page.js"
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/auth/google/route": "app/api/auth/google/route.js",
+  "/home/page": "app/home/page.js",
+  "/page": "app/page.js"
 }

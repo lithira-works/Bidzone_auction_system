@@ -1,5 +1,5 @@
 'use client'
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Bell, Heart, Search, ShoppingCart, User, Gavel } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
@@ -12,6 +12,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher'
 import { NotificationsPanel } from '@/components/panels/NotificationsPanel'
 import { WishlistPanel } from '@/components/panels/WishlistPanel'
 import { CartPanel } from '@/components/panels/CartPanel'
+import { ProfileMenu } from '@/components/ui/ProfileMenu'
 
 const NAV_SLUGS = [
   { key: 'nav.allAuctions', slug: null as string | null },
@@ -21,6 +22,28 @@ const NAV_SLUGS = [
   { key: 'nav.art', slug: 'art' },
   { key: 'nav.moreCategories', slug: 'more' },
 ] as const
+
+/* ── Avatar helpers ── */
+const AVATAR_GRADIENTS = [
+  ['#d97706', '#f59e0b'],
+  ['#7c3aed', '#a78bfa'],
+  ['#0891b2', '#22d3ee'],
+  ['#059669', '#34d399'],
+  ['#be185d', '#f472b6'],
+  ['#b45309', '#d97706'],
+] as const
+
+function avatarGradient(name: string) {
+  const idx = (name.charCodeAt(0) || 0) % AVATAR_GRADIENTS.length
+  const [from, to] = AVATAR_GRADIENTS[idx]
+  return `linear-gradient(135deg, ${from}, ${to})`
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  return name.slice(0, 2).toUpperCase() || 'BZ'
+}
 
 export function SiteHeader() {
   const { isAuthenticated, canAccessSellerTools, user, logout } = useAuth()
@@ -33,13 +56,33 @@ export function SiteHeader() {
   const searchParams = useSearchParams()
   const isHome = pathname === '/home'
 
-  const [draft, setDraft] = useState('')
-  const [sheet, setSheet] = useState<'none' | 'notifications' | 'wishlist' | 'cart'>('none')
+  const [draft, setDraft]   = useState('')
+  const [sheet, setSheet]   = useState<'none' | 'notifications' | 'wishlist' | 'cart'>('none')
+  const [profileOpen, setProfileOpen] = useState(false)
+
+  const profileWrapRef = useRef<HTMLDivElement>(null)
+
+  /* Close profile menu on outside click or Escape */
+  useEffect(() => {
+    if (!profileOpen) return
+    function onMouse(e: MouseEvent) {
+      if (profileWrapRef.current && !profileWrapRef.current.contains(e.target as Node)) {
+        setProfileOpen(false)
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setProfileOpen(false)
+    }
+    document.addEventListener('mousedown', onMouse)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onMouse)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [profileOpen])
 
   useEffect(() => {
-    if (isHome) {
-      setDraft(searchParams.get('q') ?? '')
-    }
+    if (isHome) setDraft(searchParams.get('q') ?? '')
   }, [isHome, searchParams])
 
   function applySearch(e?: FormEvent) {
@@ -79,6 +122,10 @@ export function SiteHeader() {
     return activeSlug === slug
   }
 
+  /* Avatar details */
+  const avatarGrad = user ? avatarGradient(user.fullName) : ''
+  const avatarInit = user ? initials(user.fullName) : ''
+
   return (
     <>
       <header className="site-header">
@@ -107,16 +154,14 @@ export function SiteHeader() {
 
           <div className="site-header__actions">
             <LanguageSwitcher />
+
             {canAccessSellerTools && (
               <Link href="/dashboard" className="site-header__dashboard">
                 {t('header.dashboard')}
               </Link>
             )}
-            {isAuthenticated && user?.role === 'bidder' && (
-              <Link href="/onboarding/seller-upgrade" className="site-header__dashboard">
-                {t('header.becomeSeller')}
-              </Link>
-            )}
+
+            {/* Notifications */}
             <button
               type="button"
               className="site-header__icon-btn"
@@ -131,6 +176,8 @@ export function SiteHeader() {
                 </span>
               )}
             </button>
+
+            {/* Wishlist */}
             <button
               type="button"
               className="site-header__icon-btn"
@@ -145,6 +192,8 @@ export function SiteHeader() {
                 </span>
               )}
             </button>
+
+            {/* Cart */}
             <button
               type="button"
               className="site-header__icon-btn"
@@ -159,18 +208,33 @@ export function SiteHeader() {
                 </span>
               )}
             </button>
-            {isAuthenticated ? (
-              <button
-                type="button"
-                className="site-header__signin"
-                onClick={() => {
-                  logout()
-                  router.push('/')
-                }}
-              >
-                <User size={18} aria-hidden />
-                {t('header.signOut')}
-              </button>
+
+            {/* ── Profile avatar / Sign-in ── */}
+            {isAuthenticated && user ? (
+              <div className="sh-profile-wrap" ref={profileWrapRef}>
+                <button
+                  type="button"
+                  className="sh-avatar-btn"
+                  onClick={() => setProfileOpen((v) => !v)}
+                  aria-expanded={profileOpen}
+                  aria-haspopup="true"
+                  aria-label="Open profile menu"
+                >
+                  {user.avatarUrl ? (
+                    <img
+                      src={user.avatarUrl}
+                      alt={user.fullName}
+                      className="sh-avatar-img"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="sh-avatar" style={{ background: avatarGrad }}>
+                      {avatarInit}
+                    </div>
+                  )}
+                </button>
+                {profileOpen && <ProfileMenu onClose={() => setProfileOpen(false)} />}
+              </div>
             ) : (
               <Link href="/" className="site-header__signin">
                 <User size={18} aria-hidden />
@@ -179,6 +243,7 @@ export function SiteHeader() {
             )}
           </div>
         </div>
+
         <nav className="site-header__nav" aria-label="Categories">
           {NAV_SLUGS.map((l) => (
             <Link
@@ -195,9 +260,10 @@ export function SiteHeader() {
           ))}
         </nav>
       </header>
+
       <NotificationsPanel open={sheet === 'notifications'} onClose={() => setSheet('none')} />
-      <WishlistPanel open={sheet === 'wishlist'} onClose={() => setSheet('none')} />
-      <CartPanel open={sheet === 'cart'} onClose={() => setSheet('none')} />
+      <WishlistPanel     open={sheet === 'wishlist'}      onClose={() => setSheet('none')} />
+      <CartPanel         open={sheet === 'cart'}          onClose={() => setSheet('none')} />
     </>
   )
 }
