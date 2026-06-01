@@ -1,11 +1,6 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/api/auctions/route": "app/api/auctions/route.js",
-  "/api/auth/me/route": "app/api/auth/me/route.js",
-  "/api/cart/route": "app/api/cart/route.js",
-  "/api/notifications/route": "app/api/notifications/route.js",
-  "/api/wishlist/route": "app/api/wishlist/route.js",
-  "/home/page": "app/home/page.js",
-  "/listing/[id]/page": "app/listing/[id]/page.js",
-  "/page": "app/page.js"
+  "/page": "app/page.js",
+  "/onboarding/page": "app/onboarding/page.js",
+  "/onboarding/bidder/page": "app/onboarding/bidder/page.js",
+  "/onboarding/seller/page": "app/onboarding/seller/page.js"
 }

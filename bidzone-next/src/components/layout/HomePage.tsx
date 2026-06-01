@@ -163,22 +163,30 @@ export function HomePage() {
 
             <section className="home-page__section" id="categories">
               <h2 className="home-page__section-title home-page__section-title--plain">{t('home.browseCategory')}</h2>
-              <div className="home-page__categories">
-                {categories.map((c) => {
-                  const Icon = iconMap[c.icon]
-                  const next = new URLSearchParams(searchParams.toString())
-                  next.set('category', c.slug)
-                  const href = `/home?${next.toString()}`
-                  return (
-                    <Link key={c.slug} href={href} className="home-page__category-card">
-                      <div className="home-page__category-icon">
-                        <Icon size={26} weight="duotone" aria-hidden />
-                      </div>
-                      <span className="home-page__category-name">{t(`cat.${c.slug}` as 'cat.electronics')}</span>
-                      <span className="home-page__category-count">{t('category.items', { count: c.count })}</span>
-                    </Link>
-                  )
-                })}
+              <div className="home-page__cat-marquee" aria-label={t('home.browseCategory')}>
+                <div className="home-page__cat-track" aria-hidden="false">
+                  {[...categories, ...categories].map((c, idx) => {
+                    const Icon = iconMap[c.icon]
+                    const next = new URLSearchParams(searchParams.toString())
+                    next.set('category', c.slug)
+                    const href = `/home?${next.toString()}`
+                    return (
+                      <Link
+                        key={`${c.slug}-${idx}`}
+                        href={href}
+                        className="home-page__category-card"
+                        tabIndex={idx >= categories.length ? -1 : 0}
+                        aria-hidden={idx >= categories.length}
+                      >
+                        <div className="home-page__category-icon">
+                          <Icon size={26} weight="duotone" aria-hidden />
+                        </div>
+                        <span className="home-page__category-name">{t(`cat.${c.slug}` as 'cat.electronics')}</span>
+                        <span className="home-page__category-count">{t('category.items', { count: c.count })}</span>
+                      </Link>
+                    )
+                  })}
+                </div>
               </div>
             </section>
 
