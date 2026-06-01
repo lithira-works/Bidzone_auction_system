@@ -11,15 +11,20 @@
       "static/chunks/main-app.js",
       "static/chunks/app/page.js"
     ],
-    "/api/auth/google/route": [
+    "/onboarding/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/auth/google/route.js"
+      "static/chunks/app/onboarding/page.js"
     ],
-    "/home/page": [
+    "/onboarding/bidder/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/home/page.js"
+      "static/chunks/app/onboarding/bidder/page.js"
+    ],
+    "/onboarding/seller/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/onboarding/seller/page.js"
     ]
   }
 }

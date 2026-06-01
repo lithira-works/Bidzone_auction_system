@@ -1,5 +1,0 @@
-User-agent: *
-Disallow:
-
-# After you have a public URL, add a line like:
-# Sitemap: https://your-domain.com/sitemap.xml

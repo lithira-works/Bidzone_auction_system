@@ -1,5 +1,6 @@
 {
-  "/api/auth/google/route": "app/api/auth/google/route.js",
+  "/onboarding/page": "app/onboarding/page.js",
   "/page": "app/page.js",
-  "/home/page": "app/home/page.js"
+  "/onboarding/seller/page": "app/onboarding/seller/page.js",
+  "/onboarding/bidder/page": "app/onboarding/bidder/page.js"
 }
