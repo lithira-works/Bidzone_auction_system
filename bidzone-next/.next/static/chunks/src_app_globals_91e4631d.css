@@ -3652,82 +3652,104 @@ button, input, select {
 }
 
 .home-page__category-card[href*="category=electronics"] {
-  border-color: var(--bz-cat-electronics);
-}
-
-@supports (color: color-mix(in lab, red, red)) {
-  .home-page__category-card[href*="category=electronics"] {
-    border-color: color-mix(in srgb, var(--bz-cat-electronics) 55%, var(--bz-card-border));
-  }
+  border-color: rgba(59, 130, 246, .25);
 }
 
 .home-page__category-card[href*="category=electronics"] .home-page__category-icon {
-  color: var(--bz-cat-electronics);
+  color: #60a5fa;
+  background: rgba(59, 130, 246, .09);
+  border-color: rgba(59, 130, 246, .18);
 }
 
 .home-page__category-card[href*="category=fashion"] {
-  border-color: var(--bz-cat-fashion);
-}
-
-@supports (color: color-mix(in lab, red, red)) {
-  .home-page__category-card[href*="category=fashion"] {
-    border-color: color-mix(in srgb, var(--bz-cat-fashion) 55%, var(--bz-card-border));
-  }
+  border-color: rgba(139, 92, 246, .25);
 }
 
 .home-page__category-card[href*="category=fashion"] .home-page__category-icon {
-  color: var(--bz-cat-fashion);
+  color: #a78bfa;
+  background: rgba(139, 92, 246, .09);
+  border-color: rgba(139, 92, 246, .18);
 }
 
-.home-page__category-card[href*="category=collectibles"], .home-page__category-card[href*="category=jewelry"] {
-  border-color: var(--bz-cat-antiques);
+.home-page__category-card[href*="category=collectibles"] {
+  border-color: rgba(245, 158, 11, .25);
 }
 
-@supports (color: color-mix(in lab, red, red)) {
-  .home-page__category-card[href*="category=collectibles"], .home-page__category-card[href*="category=jewelry"] {
-    border-color: color-mix(in srgb, var(--bz-cat-antiques) 55%, var(--bz-card-border));
-  }
+.home-page__category-card[href*="category=collectibles"] .home-page__category-icon {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, .09);
+  border-color: rgba(245, 158, 11, .18);
 }
 
-.home-page__category-card[href*="category=collectibles"] .home-page__category-icon, .home-page__category-card[href*="category=jewelry"] .home-page__category-icon {
-  color: var(--bz-cat-antiques);
+.home-page__category-card[href*="category=art"] {
+  border-color: rgba(236, 72, 153, .25);
+}
+
+.home-page__category-card[href*="category=art"] .home-page__category-icon {
+  color: #f472b6;
+  background: rgba(236, 72, 153, .09);
+  border-color: rgba(236, 72, 153, .18);
+}
+
+.home-page__category-card[href*="category=home"] {
+  border-color: rgba(16, 185, 129, .25);
+}
+
+.home-page__category-card[href*="category=home"] .home-page__category-icon {
+  color: #34d399;
+  background: rgba(16, 185, 129, .09);
+  border-color: rgba(16, 185, 129, .18);
+}
+
+.home-page__category-card[href*="category=sports"] {
+  border-color: rgba(249, 115, 22, .25);
+}
+
+.home-page__category-card[href*="category=sports"] .home-page__category-icon {
+  color: #fb923c;
+  background: rgba(249, 115, 22, .09);
+  border-color: rgba(249, 115, 22, .18);
+}
+
+.home-page__category-card[href*="category=jewelry"] {
+  border-color: rgba(245, 158, 11, .25);
+}
+
+.home-page__category-card[href*="category=jewelry"] .home-page__category-icon {
+  color: #fcd34d;
+  background: rgba(245, 158, 11, .09);
+  border-color: rgba(245, 158, 11, .18);
 }
 
 .home-page__category-card[href*="category=vehicles"] {
-  border-color: var(--bz-cat-vehicles);
-}
-
-@supports (color: color-mix(in lab, red, red)) {
-  .home-page__category-card[href*="category=vehicles"] {
-    border-color: color-mix(in srgb, var(--bz-cat-vehicles) 55%, var(--bz-card-border));
-  }
+  border-color: rgba(245, 158, 11, .25);
 }
 
 .home-page__category-card[href*="category=vehicles"] .home-page__category-icon {
-  color: var(--bz-cat-vehicles);
-}
-
-.home-page__category-card[href*="category=art"] .home-page__category-icon, .home-page__category-card[href*="category=home"] .home-page__category-icon, .home-page__category-card[href*="category=sports"] .home-page__category-icon {
-  color: var(--bz-ai-accent);
+  color: #fbbf24;
+  background: rgba(245, 158, 11, .09);
+  border-color: rgba(245, 158, 11, .18);
 }
 
 .home-page__category-icon {
   color: var(--bz-gold);
-  background: rgba(245, 158, 11, .08);
-  border: 1px solid rgba(245, 158, 11, .12);
-  border-radius: 14px;
+  background: rgba(245, 158, 11, .07);
+  border: 1px solid rgba(245, 158, 11, .14);
+  border-radius: 16px;
+  flex-shrink: 0;
   justify-content: center;
   align-items: center;
-  width: 48px;
-  height: 48px;
-  margin-bottom: .4rem;
-  transition: background .22s, border-color .22s;
+  width: 52px;
+  height: 52px;
+  margin-bottom: .5rem;
+  transition: background .22s, border-color .22s, transform .22s;
   display: flex;
 }
 
 .home-page__category-card:hover .home-page__category-icon {
-  background: rgba(245, 158, 11, .14);
-  border-color: rgba(245, 158, 11, .25);
+  background: rgba(245, 158, 11, .13);
+  border-color: rgba(245, 158, 11, .28);
+  transform: scale(1.06);
 }
 
 .home-page__category-name {

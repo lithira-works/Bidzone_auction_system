@@ -2076,29 +2076,53 @@ select {
   box-shadow: 0 8px 24px rgba(0,0,0,0.25), 0 0 0 1px rgba(245,158,11,0.1);
   transform: translateY(-3px);
 }
-.home-page__category-card[href*='category=electronics'] { border-color: color-mix(in srgb, var(--bz-cat-electronics) 55%, var(--bz-card-border)); }
-.home-page__category-card[href*='category=electronics'] .home-page__category-icon { color: var(--bz-cat-electronics); }
-.home-page__category-card[href*='category=fashion'] { border-color: color-mix(in srgb, var(--bz-cat-fashion) 55%, var(--bz-card-border)); }
-.home-page__category-card[href*='category=fashion'] .home-page__category-icon { color: var(--bz-cat-fashion); }
-.home-page__category-card[href*='category=collectibles'], .home-page__category-card[href*='category=jewelry'] { border-color: color-mix(in srgb, var(--bz-cat-antiques) 55%, var(--bz-card-border)); }
-.home-page__category-card[href*='category=collectibles'] .home-page__category-icon, .home-page__category-card[href*='category=jewelry'] .home-page__category-icon { color: var(--bz-cat-antiques); }
-.home-page__category-card[href*='category=vehicles'] { border-color: color-mix(in srgb, var(--bz-cat-vehicles) 55%, var(--bz-card-border)); }
-.home-page__category-card[href*='category=vehicles'] .home-page__category-icon { color: var(--bz-cat-vehicles); }
-.home-page__category-card[href*='category=art'] .home-page__category-icon, .home-page__category-card[href*='category=home'] .home-page__category-icon, .home-page__category-card[href*='category=sports'] .home-page__category-icon { color: var(--bz-ai-accent); }
+/* Electronics — blue */
+.home-page__category-card[href*='category=electronics'] { border-color: rgba(59,130,246,0.25); }
+.home-page__category-card[href*='category=electronics'] .home-page__category-icon { color: #60a5fa; background: rgba(59,130,246,0.09); border-color: rgba(59,130,246,0.18); }
+
+/* Fashion — violet */
+.home-page__category-card[href*='category=fashion'] { border-color: rgba(139,92,246,0.25); }
+.home-page__category-card[href*='category=fashion'] .home-page__category-icon { color: #a78bfa; background: rgba(139,92,246,0.09); border-color: rgba(139,92,246,0.18); }
+
+/* Collectibles — gold */
+.home-page__category-card[href*='category=collectibles'] { border-color: rgba(245,158,11,0.25); }
+.home-page__category-card[href*='category=collectibles'] .home-page__category-icon { color: #fbbf24; background: rgba(245,158,11,0.09); border-color: rgba(245,158,11,0.18); }
+
+/* Art — pink */
+.home-page__category-card[href*='category=art'] { border-color: rgba(236,72,153,0.25); }
+.home-page__category-card[href*='category=art'] .home-page__category-icon { color: #f472b6; background: rgba(236,72,153,0.09); border-color: rgba(236,72,153,0.18); }
+
+/* Home & Garden — emerald */
+.home-page__category-card[href*='category=home'] { border-color: rgba(16,185,129,0.25); }
+.home-page__category-card[href*='category=home'] .home-page__category-icon { color: #34d399; background: rgba(16,185,129,0.09); border-color: rgba(16,185,129,0.18); }
+
+/* Sports — orange */
+.home-page__category-card[href*='category=sports'] { border-color: rgba(249,115,22,0.25); }
+.home-page__category-card[href*='category=sports'] .home-page__category-icon { color: #fb923c; background: rgba(249,115,22,0.09); border-color: rgba(249,115,22,0.18); }
+
+/* Jewelry — rose gold */
+.home-page__category-card[href*='category=jewelry'] { border-color: rgba(245,158,11,0.25); }
+.home-page__category-card[href*='category=jewelry'] .home-page__category-icon { color: #fcd34d; background: rgba(245,158,11,0.09); border-color: rgba(245,158,11,0.18); }
+
+/* Vehicles — amber-orange */
+.home-page__category-card[href*='category=vehicles'] { border-color: rgba(245,158,11,0.25); }
+.home-page__category-card[href*='category=vehicles'] .home-page__category-icon { color: #fbbf24; background: rgba(245,158,11,0.09); border-color: rgba(245,158,11,0.18); }
 .home-page__category-icon {
   color: var(--bz-gold);
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.5rem;
   display: flex; align-items: center; justify-content: center;
-  width: 48px; height: 48px;
-  border-radius: 14px;
-  background: rgba(245,158,11,0.08);
-  border: 1px solid rgba(245,158,11,0.12);
-  transition: background 0.22s, border-color 0.22s;
+  width: 52px; height: 52px;
+  border-radius: 16px;
+  background: rgba(245,158,11,0.07);
+  border: 1px solid rgba(245,158,11,0.14);
+  transition: background 0.22s, border-color 0.22s, transform 0.22s;
+  flex-shrink: 0;
 }
 
 .home-page__category-card:hover .home-page__category-icon {
-  background: rgba(245,158,11,0.14);
-  border-color: rgba(245,158,11,0.25);
+  background: rgba(245,158,11,0.13);
+  border-color: rgba(245,158,11,0.28);
+  transform: scale(1.06);
 }
 
 .home-page__category-name { font-weight: 700; font-size: 0.875rem; color: var(--bz-text); line-height: 1.2; }

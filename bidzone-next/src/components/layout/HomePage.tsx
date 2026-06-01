@@ -2,7 +2,17 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { HelpCircle, Laptop, Shirt, Gem, Palette, Home, Trophy, Sparkles, Car, TrendingUp } from 'lucide-react'
+import { HelpCircle, TrendingUp } from 'lucide-react'
+import {
+  Desktop,
+  TShirt,
+  Diamond,
+  PaintBrush,
+  House,
+  Barbell,
+  Crown,
+  Car,
+} from '@phosphor-icons/react'
 import { SiteHeader } from '@/components/layout/SiteHeader'
 import { SiteFooter } from '@/components/layout/SiteFooter'
 import { HomeAdRail } from '@/components/ui/HomeAdRail'
@@ -15,8 +25,14 @@ import { useHelp } from '@/context/HelpContext'
 import { categorySlugMatchesItem, queryMatchesItem } from '@/lib/auctionFilters'
 
 const iconMap = {
-  laptop: Laptop, shirt: Shirt, gem: Gem, palette: Palette,
-  home: Home, trophy: Trophy, sparkles: Sparkles, car: Car,
+  laptop: Desktop,
+  shirt: TShirt,
+  gem: Diamond,
+  palette: PaintBrush,
+  home: House,
+  trophy: Barbell,
+  sparkles: Crown,
+  car: Car,
 } as const
 
 type SortKey = 'ending' | 'bid-high' | 'bid-low' | 'bids'
@@ -156,7 +172,7 @@ export function HomePage() {
                   return (
                     <Link key={c.slug} href={href} className="home-page__category-card">
                       <div className="home-page__category-icon">
-                        <Icon size={22} strokeWidth={1.75} aria-hidden />
+                        <Icon size={26} weight="duotone" aria-hidden />
                       </div>
                       <span className="home-page__category-name">{t(`cat.${c.slug}` as 'cat.electronics')}</span>
                       <span className="home-page__category-count">{t('category.items', { count: c.count })}</span>

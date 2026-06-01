@@ -1,9 +1,10 @@
 'use client'
 import React from 'react'
-import { ChevronRight, Gift, Search, Truck, Trophy } from 'lucide-react'
+import { MagnifyingGlass, Trophy, Package, Gift } from '@phosphor-icons/react'
+import { ChevronRight } from 'lucide-react'
 import { useI18n } from '@/context/I18nContext'
 
-const FLOW_ICONS = [Search, Trophy, Truck, Gift] as const
+const FLOW_ICONS = [MagnifyingGlass, Trophy, Package, Gift] as const
 const FLOW_TITLE_KEYS = [
   'home.flow.s1.title',
   'home.flow.s2.title',
@@ -39,7 +40,7 @@ export function HomeServiceAndGuide() {
               <li className="home-service-guide__step">
                 <div className="home-service-guide__step-inner">
                   <div className="home-service-guide__icon-wrap">
-                    <Icon size={26} strokeWidth={1.75} className="home-service-guide__icon" aria-hidden />
+                    <Icon size={28} weight="duotone" className="home-service-guide__icon" aria-hidden />
                   </div>
                   <h3 className="home-service-guide__step-title">{t(FLOW_TITLE_KEYS[i])}</h3>
                   <p className="home-service-guide__step-desc">{t(FLOW_DESC_KEYS[i])}</p>
