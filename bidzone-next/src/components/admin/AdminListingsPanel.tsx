@@ -14,6 +14,8 @@ import {
 import { api } from '@/lib/apiClient'
 import { categories } from '@/data/auctions'
 import { toDatetimeLocalValue, fromDatetimeLocalValue } from '@/lib/auctionTime'
+import { filesToListingImages } from '@/lib/listingImages'
+import { ListingPhotoUpload } from '@/components/listings/ListingPhotoUpload'
 import type { AdminAuctionRow } from '@/types/admin'
 
 type Props = {
@@ -65,6 +67,7 @@ export function AdminListingsPanel({ onError, actionId, setActionId }: Props) {
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState<ListingForm>(EMPTY)
+  const [photos, setPhotos] = useState<File[]>([])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -125,16 +128,36 @@ export function AdminListingsPanel({ onError, actionId, setActionId }: Props) {
 
   async function createListing() {
     const start = Number(form.currentBid)
-    if (!form.title.trim() || !form.imageUrl.trim() || !Number.isFinite(start) || start <= 0) {
-      onError('Title, image URL, and starting bid are required.')
+    if (!form.title.trim() || !Number.isFinite(start) || start <= 0) {
+      onError('Title and starting bid are required.')
       return
     }
+
+    const urlFallback = form.imageUrl.trim() ? [form.imageUrl.trim()] : []
+    let imageResult
+    try {
+      imageResult = await filesToListingImages(photos, { existingUrls: urlFallback })
+    } catch {
+      onError('Could not read one of the selected photos.')
+      return
+    }
+
+    if ('error' in imageResult) {
+      onError(
+        imageResult.error === 'too_large'
+          ? 'Each photo must be 10MB or smaller.'
+          : 'Add at least one photo from your device or paste an image URL.',
+      )
+      return
+    }
+
     setActionId('create')
     try {
       const buyNow = form.buyNow.trim() === '' ? undefined : Number(form.buyNow)
       await api.post('/admin/auctions', {
         title: form.title.trim(),
-        image: form.imageUrl.trim(),
+        image: imageResult.image,
+        images: imageResult.images,
         category: form.category,
         currentBid: start,
         buyNow: Number.isFinite(buyNow!) && buyNow! > start ? buyNow : undefined,
@@ -145,6 +168,7 @@ export function AdminListingsPanel({ onError, actionId, setActionId }: Props) {
         sellerName: 'BidZone Official',
       })
       setShowCreate(false)
+      setPhotos([])
       setForm({ ...EMPTY, auctionEndsAt: toDatetimeLocalValue(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) })
       setFilter('approved')
       await load()
@@ -173,7 +197,7 @@ export function AdminListingsPanel({ onError, actionId, setActionId }: Props) {
           Seller listings start as <strong>pending</strong> until you approve them. Admin-created
           listings go live immediately.
         </p>
-        <button type="button" className="adm__btn adm__btn--gold" onClick={() => setShowCreate((v) => !v)}>
+        <button type="button" className="adm__btn adm__btn--gold" onClick={() => { setShowCreate((v) => !v); if (showCreate) setPhotos([]) }}>
           <Plus size={16} /> Add listing
         </button>
       </div>
@@ -220,8 +244,23 @@ export function AdminListingsPanel({ onError, actionId, setActionId }: Props) {
               <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             </label>
             <label className="adm__field adm__field--full">
-              <span>Image URL</span>
-              <input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} />
+              <span>Photos</span>
+              <ListingPhotoUpload
+                photos={photos}
+                onPhotosChange={setPhotos}
+                uploadPrompt="Click to upload or drag and drop"
+                uploadHint="PNG, JPG, or WEBP up to 10MB (max 8 photos)"
+                fileTooLargeMessage="Each image must be 10MB or smaller."
+                tooManyImagesMessage="You can upload up to 8 images."
+              />
+            </label>
+            <label className="adm__field adm__field--full">
+              <span>Or paste image URL (optional)</span>
+              <input
+                value={form.imageUrl}
+                onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+                placeholder="https://…"
+              />
             </label>
             <label className="adm__field">
               <span>Category</span>

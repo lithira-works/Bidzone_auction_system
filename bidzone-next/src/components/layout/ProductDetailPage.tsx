@@ -71,6 +71,17 @@ export function ProductDetailPage() {
   const isPending = detail?.moderationStatus === 'pending'
   const isRejected = detail?.moderationStatus === 'rejected'
 
+  const galleryImages = useMemo(() => {
+    if (!detail) return []
+    return detail.images?.length ? detail.images : [detail.image]
+  }, [detail])
+
+  const [activeImage, setActiveImage] = useState(0)
+
+  useEffect(() => {
+    setActiveImage(0)
+  }, [detail?.id])
+
   const minBid = detail ? detail.currentBid + detail.bidIncrement : 0
   const [bidAmount, setBidAmount] = useState(minBid)
   const inWishlist = detail ? has(detail.id) : false
@@ -166,7 +177,29 @@ export function ProductDetailPage() {
         <div className="product-detail__grid">
           <div className="product-detail__col product-detail__col--main">
             <div className="product-detail__image-card">
-              <img src={detail.image} alt={detail.title} className="product-detail__image" />
+              <img
+                src={galleryImages[activeImage] ?? detail.image}
+                alt={detail.title}
+                className="product-detail__image"
+              />
+              {galleryImages.length > 1 && (
+                <div className="product-detail__thumbs" role="list" aria-label="Listing photos">
+                  {galleryImages.map((src, i) => (
+                    <button
+                      key={`${src.slice(0, 24)}-${i}`}
+                      type="button"
+                      role="listitem"
+                      className={i === activeImage ? 'product-detail__thumb product-detail__thumb--active' : 'product-detail__thumb'}
+                      onClick={() => setActiveImage(i)}
+                      aria-label={`Photo ${i + 1}`}
+                      aria-current={i === activeImage ? 'true' : undefined}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={src} alt="" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <section className="product-detail__card">

@@ -2732,6 +2732,10 @@ select {
 .product-detail__col { display: flex; flex-direction: column; gap: 1.25rem; }
 .product-detail__image-card { background: var(--bz-card-bg); border-radius: 12px; overflow: hidden; box-shadow: var(--bz-card-shadow); border: 1px solid var(--bz-card-border); }
 .product-detail__image { width: 100%; display: block; aspect-ratio: 4 / 3; object-fit: cover; }
+.product-detail__thumbs { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem; border-top: 1px solid var(--bz-card-border); background: var(--bz-bg-secondary); }
+.product-detail__thumb { padding: 0; border: 2px solid transparent; border-radius: 8px; background: none; cursor: pointer; overflow: hidden; width: 64px; height: 64px; flex-shrink: 0; }
+.product-detail__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.product-detail__thumb--active { border-color: var(--bz-gold); box-shadow: 0 0 0 1px var(--bz-gold); }
 .product-detail__card { background: var(--bz-card-bg); border-radius: 12px; padding: 1.25rem 1.35rem; box-shadow: var(--bz-card-shadow); border: 1px solid var(--bz-card-border); }
 .product-detail__card--sticky { position: sticky; top: 88px; }
 @media (max-width: 960px) { .product-detail__card--sticky { position: static; } }
@@ -2919,6 +2923,21 @@ select {
 .seller-new__money-wrap input { border: none; outline: none; flex: 1; min-width: 0; padding: 0.65rem 0; font: inherit; font-size: 0.9375rem; background: transparent; }
 .seller-new__select-wide { width: 100%; }
 .seller-new__visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+/* Shared listing photo upload (seller + admin) */
+.listing-upload { width: 100%; }
+.listing-upload__file-input { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
+.listing-upload__dropzone { width: 100%; min-height: 180px; border: 2px dashed var(--bz-card-border); border-radius: 12px; background: var(--bz-bg-secondary); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.35rem; padding: 1.25rem 1rem; cursor: pointer; font: inherit; color: inherit; transition: border-color 0.15s ease, background 0.15s ease; }
+.listing-upload__dropzone:hover, .listing-upload__dropzone--active { border-color: var(--bz-gold); background: color-mix(in srgb, var(--bz-gold) 8%, var(--bz-dash-card)); }
+.listing-upload__drop-icon { color: var(--bz-placeholder); margin-bottom: 0.15rem; }
+.listing-upload__drop-title { font-weight: 600; font-size: 0.9375rem; color: var(--bz-text-body); }
+.listing-upload__drop-sub { font-size: 0.8125rem; color: var(--bz-placeholder); text-align: center; max-width: 320px; line-height: 1.4; }
+.listing-upload__drop-count { margin-top: 0.35rem; font-size: 0.8125rem; font-weight: 600; color: var(--bz-ai-accent); }
+.listing-upload__previews { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+.listing-upload__preview-wrap { position: relative; }
+.listing-upload__thumb { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border: 1px solid var(--bz-card-border); display: block; }
+.listing-upload__remove { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; border: none; background: var(--bz-text); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+
 .seller-new__file-input { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
 .seller-new__dropzone { width: 100%; min-height: 200px; border: 2px dashed var(--bz-card-border); border-radius: 12px; background: var(--bz-bg-secondary); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.35rem; padding: 1.5rem 1rem; cursor: pointer; font: inherit; color: inherit; transition: border-color 0.15s ease, background 0.15s ease; }
 .seller-new__dropzone:hover, .seller-new__dropzone--active { border-color: var(--bz-gold); background: color-mix(in srgb, var(--bz-gold) 8%, var(--bz-dash-card)); }

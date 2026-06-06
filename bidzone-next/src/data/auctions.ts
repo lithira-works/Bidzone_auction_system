@@ -5,6 +5,7 @@ export type AuctionItem = {
   id: string
   title: string
   image: string
+  images?: string[]
   category: string
   currentBid: number
   buyNow?: number

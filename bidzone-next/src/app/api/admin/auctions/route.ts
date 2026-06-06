@@ -6,13 +6,22 @@ import { AuctionModel } from '@/models/Auction'
 import { formatTimeLeftCompact } from '@/lib/auctionTime'
 import type { AuctionItem } from '@/data/auctions'
 
+function parseImages(body: Partial<AuctionItem>): string[] | undefined {
+  const raw = body.images?.filter((u) => typeof u === 'string' && u.trim()) ?? []
+  if (raw.length > 0) return raw.slice(0, 8)
+  if (body.image) return [body.image]
+  return undefined
+}
+
 function parseListingBody(body: Partial<AuctionItem>) {
   if (!body.title?.trim() || !body.image || !body.category || body.currentBid == null) {
     return null
   }
+  const images = parseImages(body)
   return {
     title: body.title.trim(),
     image: body.image,
+    images,
     category: body.category,
     currentBid: body.currentBid,
     buyNow: body.buyNow,

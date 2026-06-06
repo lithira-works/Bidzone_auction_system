@@ -71,6 +71,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const updates: Record<string, unknown> = {}
     if (body.title != null) updates.title = body.title.trim()
     if (body.image != null) updates.image = body.image
+    if (body.images !== undefined) updates.images = body.images?.length ? body.images : undefined
     if (body.category != null) updates.category = body.category
     if (body.currentBid != null) updates.currentBid = body.currentBid
     if (body.buyNow !== undefined) updates.buyNow = body.buyNow

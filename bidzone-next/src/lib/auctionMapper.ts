@@ -10,6 +10,7 @@ export function toAuctionItem(doc: IAuction): AuctionItem {
     id: doc._id.toString(),
     title: doc.title,
     image: doc.image,
+    images: doc.images?.length ? doc.images : undefined,
     category: doc.category,
     currentBid: doc.currentBid,
     buyNow: doc.buyNow,

@@ -440,6 +440,7 @@ function toAuctionItem(doc) {
         id: doc._id.toString(),
         title: doc.title,
         image: doc.image,
+        images: doc.images?.length ? doc.images : undefined,
         category: doc.category,
         currentBid: doc.currentBid,
         buyNow: doc.buyNow,
@@ -483,6 +484,12 @@ const AuctionSchema = new __TURBOPACK__imported__module__$5b$externals$5d2f$mong
     image: {
         type: String,
         required: true
+    },
+    images: {
+        type: [
+            String
+        ],
+        default: undefined
     },
     category: {
         type: String,
@@ -591,13 +598,23 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$auctionTime$2e
 ;
 ;
 ;
+function parseImages(body) {
+    const raw = body.images?.filter((u)=>typeof u === 'string' && u.trim()) ?? [];
+    if (raw.length > 0) return raw.slice(0, 8);
+    if (body.image) return [
+        body.image
+    ];
+    return undefined;
+}
 function parseListingBody(body) {
     if (!body.title?.trim() || !body.image || !body.category || body.currentBid == null) {
         return null;
     }
+    const images = parseImages(body);
     return {
         title: body.title.trim(),
         image: body.image,
+        images,
         category: body.category,
         currentBid: body.currentBid,
         buyNow: body.buyNow,

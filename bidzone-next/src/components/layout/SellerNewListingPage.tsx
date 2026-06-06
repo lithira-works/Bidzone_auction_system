@@ -1,10 +1,11 @@
 'use client'
-import { type DragEvent, type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import { DollarSign, Calendar, Upload, HelpCircle } from 'lucide-react'
 import { SiteFooter } from '@/components/layout/SiteFooter'
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher'
+import { ListingPhotoUpload } from '@/components/listings/ListingPhotoUpload'
 import { useListings } from '@/context/ListingsContext'
 import { useI18n } from '@/context/I18nContext'
 import { useHelp } from '@/context/HelpContext'
@@ -15,9 +16,7 @@ import {
   fromDatetimeLocalValue,
   toDatetimeLocalValue,
 } from '@/lib/auctionTime'
-
-const MAX_BYTES = 10 * 1024 * 1024
-const MAX_IMAGES = 8
+import { filesToListingImages } from '@/lib/listingImages'
 
 const CONDITIONS = [
   { value: 'New', key: 'cond.new' as const },
@@ -28,15 +27,6 @@ const CONDITIONS = [
 
 function defaultEndDate(): Date {
   return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-}
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader()
-    r.onload = () => resolve(r.result as string)
-    r.onerror = () => reject(new Error('read'))
-    r.readAsDataURL(file)
-  })
 }
 
 function MoneyField({
@@ -66,7 +56,6 @@ export function SellerNewListingPage() {
   const editId = params?.id
   const { userListings, addListing, updateListing } = useListings()
   const router = useRouter()
-  const fileRef = useRef<HTMLInputElement>(null)
 
   const isEdit = Boolean(editId)
   const editItem = editId ? userListings.find((x) => x.id === editId) : undefined
@@ -80,9 +69,8 @@ export function SellerNewListingPage() {
   const [buyNow, setBuyNow] = useState('')
   const [auctionEndLocal, setAuctionEndLocal] = useState(() => toDatetimeLocalValue(defaultEndDate()))
   const [photos, setPhotos] = useState<File[]>([])
+  const [existingUrls, setExistingUrls] = useState<string[]>([])
   const [seller, setSeller] = useState('')
-  const [dragOver, setDragOver] = useState(false)
-  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (!editId) return
@@ -100,33 +88,8 @@ export function SellerNewListingPage() {
     else setAuctionEndLocal(toDatetimeLocalValue(defaultEndDate()))
     setSeller(item.sellerName ?? '')
     setPhotos([])
-    setExistingImageUrl(item.image)
+    setExistingUrls(item.images?.length ? item.images : item.image ? [item.image] : [])
   }, [editId, userListings])
-
-  const previewUrls = useMemo(() => photos.map((f) => URL.createObjectURL(f)), [photos])
-
-  useEffect(() => {
-    return () => { previewUrls.forEach((u) => URL.revokeObjectURL(u)) }
-  }, [previewUrls])
-
-  const addFiles = useCallback((list: FileList | File[]) => {
-    const arr = Array.from(list).filter((f) => f.type.startsWith('image/'))
-    setPhotos((prev) => {
-      const next = [...prev]
-      for (const f of arr) {
-        if (f.size > MAX_BYTES) { window.alert(t('seller.fileTooLarge')); continue }
-        if (next.length >= MAX_IMAGES) { window.alert(t('seller.tooManyImages')); break }
-        next.push(f)
-      }
-      return next
-    })
-  }, [t])
-
-  const onDrop = (e: DragEvent) => {
-    e.preventDefault()
-    setDragOver(false)
-    if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files)
-  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -142,20 +105,30 @@ export function SellerNewListingPage() {
     const listingId = isEdit && editId ? editId : undefined
     const createdAt = isEdit && editItem?.auctionCreatedAt ? editItem.auctionCreatedAt : undefined
 
-    const seed = encodeURIComponent(title.trim().slice(0, 40) || 'listing')
-    let image = existingImageUrl ?? `https://picsum.photos/seed/${seed}/600/450`
-    if (photos[0]) {
-      try {
-        const dataUrl = await readFileAsDataUrl(photos[0])
-        if (dataUrl.length > 2_400_000) { window.alert(t('seller.fileTooLarge')); return }
-        image = dataUrl
-      } catch { /* keep fallback */ }
+    let imageResult
+    try {
+      imageResult = await filesToListingImages(photos, { existingUrls })
+    } catch {
+      window.alert(t('seller.fileTooLarge'))
+      return
     }
+
+    if ('error' in imageResult) {
+      if (imageResult.error === 'too_large') {
+        window.alert(t('seller.fileTooLarge'))
+      } else {
+        window.alert(t('seller.errNoPhotos'))
+      }
+      return
+    }
+
+    const { image, images } = imageResult
 
     const item: AuctionItem = {
       id: listingId ?? '',
       title: title.trim(),
       image,
+      images,
       category: cat.name,
       currentBid: startNum,
       reservePrice: Number.isFinite(resNum) && resNum > 0 ? resNum : undefined,
@@ -269,33 +242,16 @@ export function SellerNewListingPage() {
               <Upload size={20} strokeWidth={2} aria-hidden />
               {t('seller.sectionPhotos')}
             </h2>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/png,image/jpeg,image/jpg"
-              multiple
-              className="seller-new__file-input"
-              onChange={(e) => { if (e.target.files?.length) addFiles(e.target.files); e.target.value = '' }}
+            <ListingPhotoUpload
+              photos={photos}
+              onPhotosChange={setPhotos}
+              existingUrls={existingUrls}
+              onRemoveExisting={(index) => setExistingUrls((prev) => prev.filter((_, i) => i !== index))}
+              uploadPrompt={t('seller.uploadPrompt')}
+              uploadHint={t('seller.uploadHint')}
+              fileTooLargeMessage={t('seller.fileTooLarge')}
+              tooManyImagesMessage={t('seller.tooManyImages')}
             />
-            <button
-              type="button"
-              className={dragOver ? 'seller-new__dropzone seller-new__dropzone--active' : 'seller-new__dropzone'}
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={onDrop}
-              onClick={() => fileRef.current?.click()}
-            >
-              <Upload size={40} strokeWidth={1.25} className="seller-new__drop-icon" aria-hidden />
-              <span className="seller-new__drop-title">{t('seller.uploadPrompt')}</span>
-              <span className="seller-new__drop-sub">{t('seller.uploadHint')}</span>
-              {photos.length > 0 && <span className="seller-new__drop-count">{photos.length} / {MAX_IMAGES}</span>}
-            </button>
-            {(previewUrls.length > 0 || (existingImageUrl && photos.length === 0)) && (
-              <div className="seller-new__previews">
-                {existingImageUrl && photos.length === 0 && <img src={existingImageUrl} alt="" className="seller-new__thumb" />}
-                {previewUrls.map((src) => <img key={src} src={src} alt="" className="seller-new__thumb" />)}
-              </div>
-            )}
           </div>
           <hr className="seller-new__rule" />
           <div className="seller-new__block">

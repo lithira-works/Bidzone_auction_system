@@ -7,6 +7,7 @@ export interface IAuction extends Document {
   _id: mongoose.Types.ObjectId
   title: string
   image: string
+  images?: string[]
   category: string
   currentBid: number
   buyNow?: number
@@ -31,6 +32,7 @@ const AuctionSchema = new Schema<IAuction>(
   {
     title: { type: String, required: true, trim: true },
     image: { type: String, required: true },
+    images: { type: [String], default: undefined },
     category: { type: String, required: true, trim: true },
     currentBid: { type: Number, required: true, min: 0 },
     buyNow: { type: Number },

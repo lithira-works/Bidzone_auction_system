@@ -381,6 +381,12 @@ const AuctionSchema = new __TURBOPACK__imported__module__$5b$externals$5d2f$mong
         type: String,
         required: true
     },
+    images: {
+        type: [
+            String
+        ],
+        default: undefined
+    },
     category: {
         type: String,
         required: true,
