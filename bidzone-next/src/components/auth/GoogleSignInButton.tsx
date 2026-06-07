@@ -2,7 +2,7 @@
 
 import { useGoogleLogin } from '@react-oauth/google'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useI18n } from '@/context/I18nContext'
 import { googleOAuthClientId } from '@/lib/googleAuth'
@@ -43,18 +43,13 @@ type UserInfoResponse = {
   picture?: string
 }
 
-export function GoogleSignInButton() {
+/** Uses Google OAuth hooks — must render inside GoogleOAuthProvider only. */
+function GoogleSignInButtonInner() {
   const { loginWithGoogleProfile } = useAuth()
   const { t } = useI18n()
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [browserReady, setBrowserReady] = useState(false)
-  const clientId = googleOAuthClientId()
-
-  useEffect(() => {
-    setBrowserReady(true)
-  }, [])
 
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
@@ -95,23 +90,6 @@ export function GoogleSignInButton() {
     googleLogin()
   }
 
-  if (!clientId) {
-    return (
-      <p className="lp__google-hint" role="status">
-        {t('login.googleNotConfigured')}
-      </p>
-    )
-  }
-
-  if (!browserReady) {
-    return (
-      <div className="lp__g-btn lp__g-btn--skeleton" aria-busy="true">
-        <span className="lp__g-btn__icon-slot" />
-        <span>Continue with Google</span>
-      </div>
-    )
-  }
-
   return (
     <div className="lp__google-section-inner">
       <button
@@ -139,4 +117,19 @@ export function GoogleSignInButton() {
       )}
     </div>
   )
+}
+
+export function GoogleSignInButton() {
+  const { t } = useI18n()
+  const clientId = googleOAuthClientId()
+
+  if (!clientId) {
+    return (
+      <p className="lp__google-hint" role="status">
+        {t('login.googleNotConfigured')}
+      </p>
+    )
+  }
+
+  return <GoogleSignInButtonInner />
 }

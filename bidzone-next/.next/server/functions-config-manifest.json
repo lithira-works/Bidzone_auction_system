@@ -1,7 +1,7 @@
 {
   "version": 1,
   "functions": {
-    "/api/auctions": {},
-    "/api/banners": {}
+    "/api/banners": {},
+    "/api/auctions": {}
   }
 }
