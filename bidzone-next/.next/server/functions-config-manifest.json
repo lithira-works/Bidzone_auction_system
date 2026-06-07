@@ -2,6 +2,8 @@
   "version": 1,
   "functions": {
     "/api/banners": {},
+    "/api/config/public": {},
+    "/api/health": {},
     "/api/auctions": {}
   }
 }

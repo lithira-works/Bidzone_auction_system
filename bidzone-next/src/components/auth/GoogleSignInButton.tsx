@@ -4,8 +4,8 @@ import { useGoogleLogin } from '@react-oauth/google'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
+import { useGoogleConfig } from '@/context/GoogleConfigContext'
 import { useI18n } from '@/context/I18nContext'
-import { googleOAuthClientId } from '@/lib/googleAuth'
 
 function GoogleColorIcon() {
   return (
@@ -119,9 +119,22 @@ function GoogleSignInButtonInner() {
   )
 }
 
+function GoogleSignInButtonSkeleton() {
+  return (
+    <div className="lp__g-btn lp__g-btn--skeleton" aria-busy="true">
+      <span className="lp__g-btn__icon-slot" />
+      <span className="lp__g-btn__label">Continue with Google</span>
+    </div>
+  )
+}
+
 export function GoogleSignInButton() {
   const { t } = useI18n()
-  const clientId = googleOAuthClientId()
+  const { clientId, ready } = useGoogleConfig()
+
+  if (!ready) {
+    return <GoogleSignInButtonSkeleton />
+  }
 
   if (!clientId) {
     return (

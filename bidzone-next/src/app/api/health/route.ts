@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getGoogleClientId, validateServerEnv } from '@/lib/env'
 
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 /** Public health check — shows whether required env vars are present (not their values). */
 export async function GET() {
   const issues = validateServerEnv()

@@ -100,7 +100,7 @@ export const STRINGS: Record<Locale, Record<string, string>> = {
     'login.errDatabase':
       'Could not reach the server database. In MongoDB Atlas, open Network Access and add your current IP address (or 0.0.0.0/0 for local dev), then try again.',
     'login.googleNotConfigured':
-      'Google sign-in is not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID in .env.local.',
+      'Google sign-in is not configured. Add NEXT_PUBLIC_GOOGLE_CLIENT_ID in Vercel Environment Variables, then redeploy.',
     'header.becomeSeller': 'Sell on BidZone',
     'onboard.roleTitle': 'How will you use BidZone?',
     'onboard.roleSub': 'Choose bidder registration or seller sign-up with phone and ID checks.',

@@ -1,4 +1,6 @@
-/** Payload fields from a Google Sign-In ID token (JWT). Demo: parsed client-side only. */
+import { getGoogleClientId } from '@/lib/env'
+
+/** Payload fields from a Google Sign-In ID token (JWT). */
 export type GoogleIdTokenPayload = {
   email?: string
   email_verified?: boolean
@@ -20,8 +22,7 @@ export function parseGoogleIdToken(credential: string): GoogleIdTokenPayload | n
   }
 }
 
-import { getGoogleClientId } from '@/lib/env'
-
+/** Server-side only — use useGoogleClientId() in client components. */
 export function googleOAuthClientId(): string {
   return getGoogleClientId()
 }
