@@ -113,6 +113,11 @@ export function toAdminUserSummary(user: IUser) {
           : null,
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
+    businessName: user.businessName ?? '',
+    businessType: user.businessType ?? '',
+    businessDescription: user.businessDescription ?? '',
+    kycSubmittedAt: user.kycSubmittedAt ? user.kycSubmittedAt.toISOString() : null,
+    kycNotes: user.kycNotes ?? '',
   }
 }
 

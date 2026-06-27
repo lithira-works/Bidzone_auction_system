@@ -68,6 +68,7 @@ export function AdminListingsPanel({ onError, actionId, setActionId }: Props) {
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState<ListingForm>(EMPTY)
   const [photos, setPhotos] = useState<File[]>([])
+  const [moderationNotes, setModerationNotes] = useState<Record<string, string>>({})
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -92,7 +93,10 @@ export function AdminListingsPanel({ onError, actionId, setActionId }: Props) {
   async function moderate(id: string, moderationStatus: 'approved' | 'rejected') {
     setActionId(id)
     try {
-      await api.patch(`/admin/auctions/${id}`, { moderationStatus })
+      await api.patch(`/admin/auctions/${id}`, {
+        moderationStatus,
+        moderationNote: moderationNotes[id] ?? '',
+      })
       await load()
     } catch {
       onError('Could not update listing status.')
@@ -364,60 +368,93 @@ export function AdminListingsPanel({ onError, actionId, setActionId }: Props) {
                       {row.featured && <span className="adm__featured-tag">Featured</span>}
                     </td>
                     <td>
-                      <div className="adm__row-actions">
+                      <div className="adm__row-actions adm__row-actions--col">
                         {row.moderationStatus === 'pending' && (
                           <>
+                            <input
+                              type="text"
+                              className="adm__mod-note-input"
+                              placeholder="Note to seller (optional for approve, shown on reject)…"
+                              value={moderationNotes[row.id] ?? ''}
+                              onChange={(e) => setModerationNotes(prev => ({ ...prev, [row.id]: e.target.value }))}
+                            />
+                            <div className="adm__row-actions">
+                              <button
+                                type="button"
+                                className="adm__icon-btn adm__icon-btn--ok"
+                                title="Approve for marketplace"
+                                disabled={actionId === row.id}
+                                onClick={() => void moderate(row.id, 'approved')}
+                              >
+                                <CheckCircle2 size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                className="adm__icon-btn adm__icon-btn--err"
+                                title="Reject"
+                                disabled={actionId === row.id}
+                                onClick={() => void moderate(row.id, 'rejected')}
+                              >
+                                <XCircle size={16} />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                        {row.moderationStatus === 'approved' && (
+                          <div className="adm__row-actions">
                             <button
                               type="button"
-                              className="adm__icon-btn adm__icon-btn--ok"
-                              title="Approve for marketplace"
+                              className="adm__icon-btn"
+                              title={row.featured ? 'Unfeature' : 'Feature'}
                               disabled={actionId === row.id}
-                              onClick={() => void moderate(row.id, 'approved')}
+                              onClick={() => void toggleFeatured(row)}
                             >
-                              <CheckCircle2 size={16} />
+                              <Star size={16} fill={row.featured ? 'currentColor' : 'none'} />
                             </button>
                             <button
                               type="button"
                               className="adm__icon-btn adm__icon-btn--err"
-                              title="Reject"
+                              title="Delete"
                               disabled={actionId === row.id}
-                              onClick={() => void moderate(row.id, 'rejected')}
+                              onClick={() => void remove(row.id)}
                             >
-                              <XCircle size={16} />
+                              <Trash2 size={16} />
                             </button>
-                          </>
-                        )}
-                        {row.moderationStatus === 'approved' && (
-                          <button
-                            type="button"
-                            className="adm__icon-btn"
-                            title={row.featured ? 'Unfeature' : 'Feature'}
-                            disabled={actionId === row.id}
-                            onClick={() => void toggleFeatured(row)}
-                          >
-                            <Star size={16} fill={row.featured ? 'currentColor' : 'none'} />
-                          </button>
+                          </div>
                         )}
                         {row.moderationStatus === 'rejected' && (
+                          <div className="adm__row-actions">
+                            <button
+                              type="button"
+                              className="adm__icon-btn"
+                              title="Re-approve"
+                              disabled={actionId === row.id}
+                              onClick={() => void moderate(row.id, 'approved')}
+                            >
+                              <Pause size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              className="adm__icon-btn adm__icon-btn--err"
+                              title="Delete"
+                              disabled={actionId === row.id}
+                              onClick={() => void remove(row.id)}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        )}
+                        {row.moderationStatus !== 'pending' && row.moderationStatus !== 'approved' && row.moderationStatus !== 'rejected' && (
                           <button
                             type="button"
-                            className="adm__icon-btn"
-                            title="Re-approve"
+                            className="adm__icon-btn adm__icon-btn--err"
+                            title="Delete"
                             disabled={actionId === row.id}
-                            onClick={() => void moderate(row.id, 'approved')}
+                            onClick={() => void remove(row.id)}
                           >
-                            <Pause size={16} />
+                            <Trash2 size={16} />
                           </button>
                         )}
-                        <button
-                          type="button"
-                          className="adm__icon-btn adm__icon-btn--err"
-                          title="Delete"
-                          disabled={actionId === row.id}
-                          onClick={() => void remove(row.id)}
-                        >
-                          <Trash2 size={16} />
-                        </button>
                       </div>
                     </td>
                   </tr>

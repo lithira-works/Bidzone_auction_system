@@ -5,15 +5,16 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, ArrowRight, Check, CheckCircle2, Eye, EyeOff,
   Gavel, HelpCircle, IdCard, Lock, Mail, MapPin, Phone,
-  Shield, ShieldCheck, Star, User,
+  Shield, ShieldCheck, Star, User, Briefcase, Clock, AlertCircle,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useI18n } from '@/context/I18nContext'
 import { useHelp } from '@/context/HelpContext'
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher'
 import { DEMO_OTP_CODE, type UserProfile } from '@/types/userProfile'
+import { api } from '@/lib/apiClient'
 
-type Step = 'account' | 'phone' | 'otp' | 'nic' | 'aml' | 'done'
+type Step = 'account' | 'business' | 'phone' | 'otp' | 'nic' | 'aml' | 'done'
 
 type Props =
   | { mode: 'new' }
@@ -22,51 +23,68 @@ type Props =
 type StepDef = { id: Step; label: string }
 
 const NEW_STEPS: StepDef[]     = [
-  { id: 'account', label: 'Account' },
-  { id: 'phone',   label: 'Phone'   },
-  { id: 'otp',     label: 'Verify'  },
-  { id: 'nic',     label: 'Identity'},
+  { id: 'account',  label: 'Account'  },
+  { id: 'business', label: 'Business' },
+  { id: 'phone',    label: 'Phone'    },
+  { id: 'otp',      label: 'Verify'  },
+  { id: 'nic',      label: 'Identity' },
 ]
 const UPGRADE_STEPS: StepDef[] = [
-  { id: 'phone',   label: 'Phone'   },
-  { id: 'otp',     label: 'Verify'  },
-  { id: 'nic',     label: 'Identity'},
+  { id: 'business', label: 'Business' },
+  { id: 'phone',    label: 'Phone'    },
+  { id: 'otp',      label: 'Verify'  },
+  { id: 'nic',      label: 'Identity' },
 ]
-const STEP_ORDER: Step[] = ['account', 'phone', 'otp', 'nic', 'aml', 'done']
+const STEP_ORDER: Step[] = ['account', 'business', 'phone', 'otp', 'nic', 'aml', 'done']
 
 const HERO_TL = [
-  { id: 'account' as Step, label: 'Account details',   sub: 'Name, email & password'        },
-  { id: 'phone'   as Step, label: 'Phone verification', sub: 'SMS one-time code'              },
-  { id: 'otp'     as Step, label: 'Code confirmation',  sub: 'Enter the code from your phone' },
-  { id: 'nic'     as Step, label: 'Identity document',  sub: 'Upload NIC or passport scan'   },
+  { id: 'account'  as Step, label: 'Account details',    sub: 'Name, email & password'         },
+  { id: 'business' as Step, label: 'Business profile',   sub: 'Business name & description'    },
+  { id: 'phone'    as Step, label: 'Phone verification', sub: 'SMS one-time code'               },
+  { id: 'otp'      as Step, label: 'Code confirmation',  sub: 'Enter the code from your phone'  },
+  { id: 'nic'      as Step, label: 'Identity document',  sub: 'Upload NIC or passport scan'    },
+]
+
+const BUSINESS_TYPES = [
+  { value: 'individual',          label: 'Individual / Sole trader' },
+  { value: 'registered_business', label: 'Registered Business'     },
+  { value: 'cooperative',         label: 'Cooperative / Partnership'},
 ]
 
 export function SellerKycWizard(props: Props) {
-  const { registerNewVerifiedSeller, upgradeCurrentUserToSeller } = useAuth()
+  const { registerNewVerifiedSeller } = useAuth()
   const { t } = useI18n()
   const { openHelp } = useHelp()
   const router = useRouter()
 
-  const initialStep: Step = props.mode === 'new' ? 'account' : 'phone'
+  const initialStep: Step = props.mode === 'new' ? 'account' : 'business'
   const [step, setStep] = useState<Step>(initialStep)
 
+  /* Account fields */
   const [fullName, setFullName] = useState(props.mode === 'upgrade' ? props.bidder.fullName : '')
   const [email,    setEmail]    = useState(props.mode === 'upgrade' ? props.bidder.email    : '')
   const [password, setPassword] = useState('')
-  const [address,  setAddress]  = useState(props.mode === 'upgrade' ? props.bidder.address  : '')
-  const [city,     setCity]     = useState(props.mode === 'upgrade' ? props.bidder.city     : '')
-  const [phone,    setPhone]    = useState('')
-  const [otp,      setOtp]      = useState('')
+  const [address,  setAddress]  = useState(props.mode === 'upgrade' ? (props.bidder.address ?? '') : '')
+  const [city,     setCity]     = useState(props.mode === 'upgrade' ? (props.bidder.city ?? '')    : '')
+
+  /* Business fields */
+  const [businessName,        setBusinessName]        = useState(props.mode === 'upgrade' ? (props.bidder.businessName ?? '') : '')
+  const [businessType,        setBusinessType]        = useState<string>(props.mode === 'upgrade' ? (props.bidder.businessType ?? 'individual') : 'individual')
+  const [businessDescription, setBusinessDescription] = useState(props.mode === 'upgrade' ? (props.bidder.businessDescription ?? '') : '')
+
+  /* Phone / OTP / NIC */
+  const [phone,      setPhone]      = useState('')
+  const [otp,        setOtp]        = useState('')
   const [nicDataUrl, setNicDataUrl] = useState<string | null>(null)
-  const [showPw,   setShowPw]   = useState(false)
-  const [otpError, setOtpError] = useState<string | null>(null)
-  const [regError, setRegError] = useState<string | null>(null)
+  const [showPw,     setShowPw]     = useState(false)
+  const [otpError,   setOtpError]   = useState<string | null>(null)
+  const [regError,   setRegError]   = useState<string | null>(null)
   const [amlRunning, setAmlRunning] = useState(false)
 
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const steps    = props.mode === 'new' ? NEW_STEPS : UPGRADE_STEPS
-  const curIdx   = STEP_ORDER.indexOf(step)
+  const steps  = props.mode === 'new' ? NEW_STEPS : UPGRADE_STEPS
+  const curIdx = STEP_ORDER.indexOf(step)
 
   function stepStatus(s: StepDef): 'done' | 'active' | 'pending' {
     const si = STEP_ORDER.indexOf(s.id)
@@ -78,6 +96,12 @@ export function SellerKycWizard(props: Props) {
   function onAccountNext(e: React.FormEvent) {
     e.preventDefault()
     setRegError(null)
+    setStep('business')
+  }
+
+  function onBusinessNext(e: React.FormEvent) {
+    e.preventDefault()
+    if (!businessName.trim()) return
     setStep('phone')
   }
 
@@ -114,8 +138,21 @@ export function SellerKycWizard(props: Props) {
           setStep('account')
           return
         }
+        /* After registration, submit the seller application with business fields */
+        await api.post('/seller/apply', {
+          phone,
+          businessName: businessName.trim(),
+          businessType,
+          businessDescription: businessDescription.trim(),
+        }).catch(() => {/* non-fatal */})
       } else {
-        await upgradeCurrentUserToSeller({ phone, nicImageDataUrl: nicDataUrl })
+        /* Upgrade flow: submit application */
+        await api.post('/seller/apply', {
+          phone,
+          businessName: businessName.trim(),
+          businessType,
+          businessDescription: businessDescription.trim(),
+        }).catch(() => {/* non-fatal */})
       }
       setStep('done')
     }, 2600)
@@ -129,7 +166,6 @@ export function SellerKycWizard(props: Props) {
     reader.readAsDataURL(file)
   }
 
-  /* ── Hero timeline status ── */
   function tlStatus(id: Step): 'done' | 'active' | 'pending' {
     const si = STEP_ORDER.indexOf(id)
     if (curIdx > si) return 'done'
@@ -137,9 +173,11 @@ export function SellerKycWizard(props: Props) {
     return 'pending'
   }
 
+  const heroTl = props.mode === 'new' ? HERO_TL : HERO_TL.slice(1)
+
   const heroTitle =
     step === 'done'
-      ? 'You\'re Verified!'
+      ? 'Application Submitted!'
       : props.mode === 'upgrade'
         ? 'Become a Seller'
         : 'Seller Sign-up'
@@ -147,16 +185,13 @@ export function SellerKycWizard(props: Props) {
   return (
     <div className="ob-role">
 
-      {/* ════════════════════════════════
-          LEFT HERO — Seller timeline
-          ════════════════════════════════ */}
+      {/* ════════════════════════════ LEFT HERO ════════════════════════════ */}
       <div className="ob-role__hero" aria-hidden="true">
         <div className="ob-role__orb ob-role__orb--1" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.28) 0%, transparent 70%)' }} />
         <div className="ob-role__orb ob-role__orb--2" style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.18) 0%, transparent 70%)' }} />
         <div className="ob-role__orb ob-role__orb--3" />
 
         <div className="ob-role__hero-inner">
-          {/* Brand */}
           <div className="ob-role__brand">
             <div className="ob-role__brand-icon">
               <Gavel size={21} strokeWidth={2.2} />
@@ -164,7 +199,6 @@ export function SellerKycWizard(props: Props) {
             <span className="ob-role__brand-name">BidZone</span>
           </div>
 
-          {/* Pill */}
           <div className="ob-role__step-pill" style={{ background: 'rgba(139,92,246,0.12)', borderColor: 'rgba(139,92,246,0.3)', color: '#a78bfa' }}>
             <Star size={10} strokeWidth={2.5} />
             Seller Verification
@@ -176,26 +210,26 @@ export function SellerKycWizard(props: Props) {
               background: 'linear-gradient(120deg,#a78bfa 0%,#8b5cf6 50%,#c4b5fd 100%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             }}>
-              {heroTitle.split(' ').slice(2).join(' ') || 'Verified Seller'}
+              {heroTitle.split(' ').slice(2).join(' ') || 'Pending Review'}
             </span>
           </h1>
 
           <p className="ob-role__hero-sub">
             {step === 'done'
-              ? 'Your seller account is active. List items and start earning on BidZone.'
-              : 'Complete 4 quick steps to unlock listing access and reach 50,000+ buyers.'}
+              ? 'Your application is under admin review. You\'ll be notified once approved.'
+              : 'Complete the steps to unlock listing access and reach 50,000+ buyers.'}
           </p>
 
           {/* Verification timeline */}
           {step !== 'done' && (
             <div className="ob-seller-tl" style={{ marginBottom: '2rem' }}>
-              {HERO_TL.map((item) => {
+              {heroTl.map((item) => {
                 const s = tlStatus(item.id)
                 return (
                   <div key={item.id} className="ob-tl-item">
                     <div className="ob-tl-left">
                       <div className={`ob-tl-dot ob-tl-dot--${s}`}>
-                        {s === 'done' ? <Check size={13} /> : HERO_TL.findIndex(h => h.id === item.id) + 1}
+                        {s === 'done' ? <Check size={13} /> : heroTl.findIndex(h => h.id === item.id) + 1}
                       </div>
                       <div className={`ob-tl-line ob-tl-line--${s === 'done' ? 'done' : ''}`} />
                     </div>
@@ -209,13 +243,17 @@ export function SellerKycWizard(props: Props) {
             </div>
           )}
 
-          {/* Done perks */}
+          {/* Done perks — now showing pending state */}
           {step === 'done' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '2rem' }}>
-              {['Listing access is now active', 'Auctions go live immediately', 'Manage everything from dashboard'].map((perk) => (
+              {[
+                'Application submitted successfully',
+                'Admin review typically takes 24–48 hours',
+                'You\'ll receive a notification when approved',
+              ].map((perk) => (
                 <div key={perk} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', display: 'grid', placeItems: 'center', color: '#10b981', flexShrink: 0 }}>
-                    <Check size={13} />
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)', display: 'grid', placeItems: 'center', color: '#a78bfa', flexShrink: 0 }}>
+                    <Clock size={13} />
                   </div>
                   <span style={{ fontSize: '0.88rem', color: 'rgba(255,255,255,0.6)' }}>{perk}</span>
                 </div>
@@ -223,7 +261,6 @@ export function SellerKycWizard(props: Props) {
             </div>
           )}
 
-          {/* Trust row */}
           <div className="ob-role__trust">
             <ShieldCheck size={12} strokeWidth={2.5} />
             <span>AML Screened</span>
@@ -235,13 +272,10 @@ export function SellerKycWizard(props: Props) {
         </div>
       </div>
 
-      {/* ════════════════════════════════
-          RIGHT — Wizard steps
-          ════════════════════════════════ */}
+      {/* ════════════════════════════ RIGHT — Wizard ════════════════════════════ */}
       <div className="ob-role__panel">
         <div className="ob-role__panel-inner">
 
-          {/* Toolbar */}
           <div className="ob-role__toolbar">
             <LanguageSwitcher />
             <button
@@ -254,7 +288,6 @@ export function SellerKycWizard(props: Props) {
             </button>
           </div>
 
-          {/* Mobile brand */}
           <div className="ob-role__mobile-brand" aria-hidden="true">
             <div className="ob-role__brand-icon">
               <Gavel size={19} strokeWidth={2.2} />
@@ -262,7 +295,6 @@ export function SellerKycWizard(props: Props) {
             <span className="ob-role__brand-name">BidZone</span>
           </div>
 
-          {/* Step indicator */}
           {step !== 'done' && step !== 'aml' && (
             <nav className="ob-wiz-steps" aria-label={t('onboard.stepsLabel')}>
               {steps.map((s, i) => {
@@ -362,6 +394,70 @@ export function SellerKycWizard(props: Props) {
             </>
           )}
 
+          {/* ── STEP: Business Profile ── */}
+          {step === 'business' && (
+            <>
+              <h2 className="ob-role__panel-heading">Business profile</h2>
+              <p className="ob-role__panel-sub">Tell buyers about your business to build trust.</p>
+
+              <form className="ob-form" onSubmit={onBusinessNext} noValidate>
+                <div className="ob-hint">
+                  <Briefcase size={13} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
+                  This information will be reviewed by our admin team during verification.
+                </div>
+
+                <label className="ob-field">
+                  <span className="ob-label">Business / Display name <span style={{ color: 'var(--bz-err)' }}>*</span></span>
+                  <div className="ob-input-wrap">
+                    <span className="ob-input-icon"><Briefcase size={17} /></span>
+                    <input className="ob-input" type="text" required autoFocus
+                      placeholder="Your shop or business name"
+                      value={businessName}
+                      onChange={(e) => setBusinessName(e.target.value)} />
+                  </div>
+                </label>
+
+                <label className="ob-field">
+                  <span className="ob-label">Business type</span>
+                  <div className="ob-input-wrap">
+                    <span className="ob-input-icon"><Briefcase size={17} /></span>
+                    <select
+                      className="ob-input"
+                      value={businessType}
+                      onChange={(e) => setBusinessType(e.target.value)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {BUSINESS_TYPES.map((bt) => (
+                        <option key={bt.value} value={bt.value}>{bt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </label>
+
+                <label className="ob-field">
+                  <span className="ob-label">Short description <span style={{ color: 'var(--bz-text-muted)', fontWeight: 400 }}>(optional)</span></span>
+                  <div className="ob-input-wrap">
+                    <textarea
+                      className="ob-input ob-textarea"
+                      placeholder="What will you be selling? A brief description helps admin approve faster."
+                      value={businessDescription}
+                      onChange={(e) => setBusinessDescription(e.target.value)}
+                      maxLength={300}
+                      rows={3}
+                    />
+                  </div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--bz-text-muted)', textAlign: 'right', display: 'block', marginTop: '0.25rem' }}>
+                    {businessDescription.length}/300
+                  </span>
+                </label>
+
+                <button type="submit" className="ob-btn" disabled={!businessName.trim()}>
+                  {t('onboard.next')} <ArrowRight size={18} />
+                </button>
+              </form>
+            </>
+          )}
+
           {/* ── STEP: Phone ── */}
           {step === 'phone' && (
             <>
@@ -450,7 +546,6 @@ export function SellerKycWizard(props: Props) {
                   {t('onboard.nicHint')}
                 </div>
 
-                {/* Hidden file input */}
                 <input
                   ref={fileRef}
                   type="file"
@@ -459,7 +554,6 @@ export function SellerKycWizard(props: Props) {
                   onChange={(e) => onNicFileChange(e.target.files)}
                 />
 
-                {/* Upload zone */}
                 <button
                   type="button"
                   className={`ob-upload-zone${nicDataUrl ? ' ob-upload-zone--uploaded' : ''}`}
@@ -498,7 +592,7 @@ export function SellerKycWizard(props: Props) {
               </div>
 
               <div>
-                <p className="ob-aml-title">Screening in progress</p>
+                <p className="ob-aml-title">Submitting your application</p>
                 <p className="ob-aml-sub">{t('onboard.amlWait')}</p>
               </div>
 
@@ -517,26 +611,30 @@ export function SellerKycWizard(props: Props) {
             </div>
           )}
 
-          {/* ── Done ── */}
+          {/* ── Done — Application Submitted (Pending Review) ── */}
           {step === 'done' && (
             <div className="ob-done">
-              <div className="ob-done-ring">
-                <CheckCircle2 size={40} />
+              <div className="ob-done-ring" style={{ background: 'rgba(139,92,246,0.12)', borderColor: 'rgba(139,92,246,0.3)', color: '#a78bfa' }}>
+                <Clock size={40} />
               </div>
 
               <div>
-                <h2 className="ob-done-title">{t('onboard.sellerDoneTitle')}</h2>
-                <p className="ob-done-sub">{t('onboard.sellerSuccess')}</p>
+                <h2 className="ob-done-title">Application Submitted!</h2>
+                <p className="ob-done-sub">
+                  Your seller application is under review. Our admin team will verify your details and notify you within 24–48 hours.
+                </p>
               </div>
 
               <div className="ob-done-perks">
                 {[
-                  'Listing access enabled',
-                  'Identity verified & secured',
-                  'Dashboard ready to use',
+                  'Application sent for admin review',
+                  'NIC & business info verified securely',
+                  'Notification sent on decision',
                 ].map((p) => (
-                  <div key={p} className="ob-done-perk">
-                    <div className="ob-done-check"><Check size={11} /></div>
+                  <div key={p} className="ob-done-perk" style={{ borderColor: 'rgba(139,92,246,0.2)', background: 'rgba(139,92,246,0.06)' }}>
+                    <div className="ob-done-check" style={{ background: 'rgba(139,92,246,0.15)', borderColor: 'rgba(139,92,246,0.3)', color: '#a78bfa' }}>
+                      <AlertCircle size={11} />
+                    </div>
                     {p}
                   </div>
                 ))}
@@ -546,9 +644,9 @@ export function SellerKycWizard(props: Props) {
                 type="button"
                 className="ob-btn"
                 style={{ width: '100%' }}
-                onClick={() => router.replace('/dashboard')}
+                onClick={() => router.replace('/home')}
               >
-                {t('onboard.goDashboard')}
+                Back to Marketplace
                 <ArrowRight size={18} />
               </button>
             </div>

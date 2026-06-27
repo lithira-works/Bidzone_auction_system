@@ -18,6 +18,13 @@ export interface IUser extends Document {
   listingAllowed: boolean
   fraudCheckPassed: boolean
   avatarUrl: string | null
+  /** Seller profile fields — populated during seller application */
+  businessName: string
+  businessType: 'individual' | 'registered_business' | 'cooperative' | ''
+  businessDescription: string
+  kycSubmittedAt: Date | null
+  /** Admin notes shown to seller on approval/rejection */
+  kycNotes: string
   createdAt: Date
   updatedAt: Date
 }
@@ -42,6 +49,15 @@ const UserSchema = new Schema<IUser>(
     avatarUrl: { type: String, default: null },
     isSuperAdmin: { type: Boolean, default: false },
     delegatedAdmin: { type: Boolean, default: false },
+    businessName: { type: String, default: '', trim: true },
+    businessType: {
+      type: String,
+      enum: ['individual', 'registered_business', 'cooperative', ''],
+      default: '',
+    },
+    businessDescription: { type: String, default: '', trim: true },
+    kycSubmittedAt: { type: Date, default: null },
+    kycNotes: { type: String, default: '', trim: true },
   },
   { timestamps: true },
 )

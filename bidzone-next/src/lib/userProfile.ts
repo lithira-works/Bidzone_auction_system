@@ -22,5 +22,10 @@ export function toUserProfile(user: IUser): UserProfile {
     fraudCheckPassed: user.fraudCheckPassed,
     createdAt: user.createdAt.toISOString(),
     avatarUrl: user.avatarUrl ?? null,
+    businessName: user.businessName ?? '',
+    businessType: (user.businessType ?? '') as UserProfile['businessType'],
+    businessDescription: user.businessDescription ?? '',
+    kycSubmittedAt: user.kycSubmittedAt ? user.kycSubmittedAt.toISOString() : null,
+    kycNotes: user.kycNotes ?? '',
   }
 }

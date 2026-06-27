@@ -46,7 +46,7 @@ function initials(name: string) {
 }
 
 function SiteHeaderInner() {
-  const { isAuthenticated, canAccessSellerTools, user, logout } = useAuth()
+  const { isAuthenticated, canAccessSellerTools, isAdmin, user, logout } = useAuth()
   const { t } = useI18n()
   const { count: wishlistCount } = useWishlist()
   const { unreadCount } = useNotifications()
@@ -155,7 +155,15 @@ function SiteHeaderInner() {
           <div className="site-header__actions">
             <LanguageSwitcher />
 
-            {canAccessSellerTools && (
+            {/* Admin console shortcut in header */}
+            {isAdmin && (
+              <Link href="/admin" className="site-header__dashboard">
+                Admin
+              </Link>
+            )}
+
+            {/* Seller dashboard shortcut — only for approved sellers, never for admins */}
+            {!isAdmin && canAccessSellerTools && (
               <Link href="/dashboard" className="site-header__dashboard">
                 {t('header.dashboard')}
               </Link>

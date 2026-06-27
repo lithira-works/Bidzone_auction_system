@@ -55,6 +55,11 @@ export async function PATCH(req: NextRequest) {
       kycStatus?: string
       listingAllowed?: boolean
       fraudCheckPassed?: boolean
+      businessName?: string
+      businessType?: string
+      businessDescription?: string
+      city?: string
+      address?: string
     }
 
     await connectToDatabase()
@@ -70,8 +75,14 @@ export async function PATCH(req: NextRequest) {
 
     const allowed: Record<string, unknown> = {}
 
-    if (typeof body.phone === 'string') {
-      allowed.phone = body.phone.trim()
+    if (typeof body.phone === 'string') allowed.phone = body.phone.trim()
+    if (typeof body.city === 'string') allowed.city = body.city.trim()
+    if (typeof body.address === 'string') allowed.address = body.address.trim()
+    if (typeof body.businessName === 'string') allowed.businessName = body.businessName.trim()
+    if (typeof body.businessDescription === 'string') allowed.businessDescription = body.businessDescription.trim()
+    const allowedBizTypes = ['individual', 'registered_business', 'cooperative', '']
+    if (typeof body.businessType === 'string' && allowedBizTypes.includes(body.businessType)) {
+      allowed.businessType = body.businessType
     }
 
     /* Bidder → seller upgrade only; privileges require admin approval */

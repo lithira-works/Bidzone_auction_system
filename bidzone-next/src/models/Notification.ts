@@ -1,6 +1,15 @@
 import mongoose, { Schema, type Document, type Model } from 'mongoose'
 
-export type NotificationKind = 'outbid' | 'bid_placed' | 'won' | 'payment' | 'lot_broadcast'
+export type NotificationKind =
+  | 'outbid'
+  | 'bid_placed'
+  | 'won'
+  | 'payment'
+  | 'lot_broadcast'
+  | 'seller_approved'
+  | 'seller_rejected'
+  | 'listing_approved'
+  | 'listing_rejected'
 
 export interface INotification extends Document {
   _id: mongoose.Types.ObjectId
@@ -12,6 +21,9 @@ export interface INotification extends Document {
     bidAmount?: number
     rawItem?: string
     paymentTotal?: number
+    message?: string
+    adminNote?: string
+    listingTitle?: string
   }
   createdAt: Date
 }
@@ -21,7 +33,17 @@ const NotificationSchema = new Schema<INotification>(
     userId: { type: String, required: true },
     kind: {
       type: String,
-      enum: ['outbid', 'bid_placed', 'won', 'payment', 'lot_broadcast'],
+      enum: [
+        'outbid',
+        'bid_placed',
+        'won',
+        'payment',
+        'lot_broadcast',
+        'seller_approved',
+        'seller_rejected',
+        'listing_approved',
+        'listing_rejected',
+      ],
       required: true,
     },
     read: { type: Boolean, default: false },
@@ -30,6 +52,9 @@ const NotificationSchema = new Schema<INotification>(
       bidAmount: { type: Number },
       rawItem: { type: String },
       paymentTotal: { type: Number },
+      message: { type: String },
+      adminNote: { type: String },
+      listingTitle: { type: String },
     },
   },
   { timestamps: true },

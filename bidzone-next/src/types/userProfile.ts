@@ -4,6 +4,8 @@ export type UserRole = 'bidder' | 'seller' | 'admin'
 
 export type KycStatus = 'not_required' | 'pending' | 'verified' | 'rejected'
 
+export type BusinessType = 'individual' | 'registered_business' | 'cooperative' | ''
+
 export type UserProfile = {
   id: string
   role: UserRole
@@ -21,6 +23,12 @@ export type UserProfile = {
   fraudCheckPassed: boolean
   createdAt: string
   avatarUrl?: string | null
+  /** Seller application fields */
+  businessName?: string
+  businessType?: BusinessType
+  businessDescription?: string
+  kycSubmittedAt?: string | null
+  kycNotes?: string
 }
 
 export const DEMO_OTP_CODE = '123456'

@@ -1,9 +1,0 @@
-{
-  "version": 1,
-  "functions": {
-    "/api/auctions": {},
-    "/api/banners": {},
-    "/api/health": {},
-    "/api/config/public": {}
-  }
-}

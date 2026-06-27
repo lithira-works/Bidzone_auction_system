@@ -13,14 +13,14 @@ export function SellerUpgradePage() {
       router.replace('/')
     } else if (canAccessSellerTools) {
       router.replace('/dashboard')
-    } else if (user.role !== 'bidder') {
-      router.replace('/home')
+    } else if (user.role === 'admin') {
+      router.replace('/admin')
     }
   }, [isAuthenticated, canAccessSellerTools, user, router])
 
   if (!isAuthenticated || !user) return null
   if (canAccessSellerTools) return null
-  if (user.role !== 'bidder') return null
+  if (user.role === 'admin') return null
 
   return <SellerKycWizard mode="upgrade" bidder={user} />
 }

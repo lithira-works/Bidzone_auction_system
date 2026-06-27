@@ -21,6 +21,9 @@ import {
   Lock,
   Crown,
   Megaphone,
+  X,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/apiClient'
@@ -82,6 +85,25 @@ export function AdminDashboardPage() {
   const [users, setUsers] = useState<AdminUserRow[]>([])
   const [userQuery, setUserQuery] = useState('')
   const [actionId, setActionId] = useState<string | null>(null)
+  const [kycNotes, setKycNotes] = useState<Record<string, string>>({})
+
+  /* Create Seller modal state */
+  const [showCreateSeller, setShowCreateSeller] = useState(false)
+  const [createSellerForm, setCreateSellerForm] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    phone: '',
+    city: '',
+    businessName: '',
+    businessType: '' as '' | 'individual' | 'registered_business' | 'cooperative',
+    businessDescription: '',
+    preApproved: true,
+  })
+  const [createSellerSaving, setCreateSellerSaving] = useState(false)
+  const [createSellerError, setCreateSellerError] = useState<string | null>(null)
+  const [createSellerSuccess, setCreateSellerSuccess] = useState<string | null>(null)
+  const [showCreatePw, setShowCreatePw] = useState(false)
 
   const loadStats = useCallback(async () => {
     const data = await api.get<AdminStatsResponse>('/admin/stats')
@@ -127,9 +149,51 @@ export function AdminDashboardPage() {
     }
   }
 
+  async function approveKyc(id: string) {
+    await patchUser(id, { kycStatus: 'verified', kycNotes: kycNotes[id] ?? '' })
+  }
+
+  async function rejectKyc(id: string) {
+    if (!(kycNotes[id] ?? '').trim()) {
+      setError('Please add a rejection reason before rejecting.')
+      return
+    }
+    await patchUser(id, { kycStatus: 'rejected', kycNotes: kycNotes[id] ?? '' })
+  }
+
   function handleSignOut() {
     logout()
     router.push('/')
+  }
+
+  async function handleCreateSeller(e: React.FormEvent) {
+    e.preventDefault()
+    setCreateSellerError(null)
+    if (!createSellerForm.fullName.trim() || !createSellerForm.email.trim() || !createSellerForm.password) {
+      setCreateSellerError('Full name, email and password are required.')
+      return
+    }
+    setCreateSellerSaving(true)
+    try {
+      const created = await api.post<{ user: AdminUserRow }>('/admin/users', createSellerForm)
+      setCreateSellerSuccess(`Seller account created for ${created.user.fullName} (${created.user.email}).`)
+      setCreateSellerForm({
+        fullName: '', email: '', password: '', phone: '', city: '',
+        businessName: '', businessType: '', businessDescription: '', preApproved: true,
+      })
+      await refresh()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      setCreateSellerError(msg === 'email_taken' ? 'That email address is already registered.' : 'Failed to create account. Please try again.')
+    } finally {
+      setCreateSellerSaving(false)
+    }
+  }
+
+  function openCreateSeller() {
+    setCreateSellerError(null)
+    setCreateSellerSuccess(null)
+    setShowCreateSeller(true)
   }
 
   const pendingCount = statsData?.stats.pendingKyc ?? 0
@@ -356,6 +420,9 @@ export function AdminDashboardPage() {
                   <button type="button" className="adm__btn adm__btn--ghost" onClick={() => void loadUsers({ q: userQuery || undefined })}>
                     Search
                   </button>
+                  <button type="button" className="adm__btn adm__btn--primary" onClick={openCreateSeller}>
+                    <UserPlus size={15} /> Create Seller
+                  </button>
                 </div>
                 <div className="adm__card adm__card--flush">
                   <div className="adm__table-wrap">
@@ -421,8 +488,8 @@ export function AdminDashboardPage() {
             {tab === 'kyc' && (
               <div className="adm__panel">
                 <p className="adm__hint">
-                  When someone applies to become a seller, they appear here for identity review.
-                  Approve to let them list items on the marketplace; reject if verification fails.
+                  Seller applications appear here for identity review. Review the business profile and identity document,
+                  then approve to grant listing access or reject with a reason. Sellers are notified automatically.
                 </p>
                 <div className="adm__card adm__card--flush">
                   {users.length === 0 ? (
@@ -434,29 +501,84 @@ export function AdminDashboardPage() {
                     <div className="adm__kyc-list">
                       {users.map((u) => (
                         <article key={u.id} className="adm__kyc-card">
-                          <div className="adm__kyc-info">
-                            <h3>{u.fullName}</h3>
-                            <p>{u.email}</p>
-                            <div className="adm__kyc-meta">
-                              <span>Phone: {u.phone || '—'}</span>
-                              <span>City: {u.city || '—'}</span>
-                              <KycBadge status={u.kycStatus} />
+                          <div className="adm__kyc-card-head">
+                            <div className="adm__kyc-avatar">
+                              {(u.fullName || 'U').slice(0, 2).toUpperCase()}
+                            </div>
+                            <div className="adm__kyc-info">
+                              <h3>{u.fullName}</h3>
+                              <p>{u.email}</p>
+                              <div className="adm__kyc-meta">
+                                <span>📞 {u.phone || '—'}</span>
+                                <span>📍 {u.city || '—'}</span>
+                                <KycBadge status={u.kycStatus} />
+                              </div>
                             </div>
                           </div>
+
+                          {/* Business profile section */}
+                          {(u.businessName || u.businessType || u.businessDescription) && (
+                            <div className="adm__kyc-business">
+                              <div className="adm__kyc-business-head">
+                                <span className="adm__kyc-business-label">Business Profile</span>
+                                {u.businessType && (
+                                  <span className="adm__kyc-business-type">
+                                    {u.businessType === 'individual' ? '👤 Individual' :
+                                     u.businessType === 'registered_business' ? '🏢 Registered Business' :
+                                     '🤝 Cooperative'}
+                                  </span>
+                                )}
+                              </div>
+                              {u.businessName && (
+                                <p className="adm__kyc-business-name">{u.businessName}</p>
+                              )}
+                              {u.businessDescription && (
+                                <p className="adm__kyc-business-desc">{u.businessDescription}</p>
+                              )}
+                              {u.kycSubmittedAt && (
+                                <p className="adm__kyc-submitted">
+                                  Applied: {formatDate(u.kycSubmittedAt)}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Previous admin notes */}
+                          {u.kycNotes && (
+                            <div className="adm__kyc-prev-notes">
+                              <span>Previous note:</span> {u.kycNotes}
+                            </div>
+                          )}
+
+                          {/* Rejection/approval note input */}
+                          <div className="adm__kyc-note-wrap">
+                            <label className="adm__kyc-note-label" htmlFor={`kyc-note-${u.id}`}>
+                              Admin note <span style={{ color: 'var(--bz-text-muted)', fontWeight: 400 }}>(required for rejection, optional for approval)</span>
+                            </label>
+                            <textarea
+                              id={`kyc-note-${u.id}`}
+                              className="adm__kyc-note-input"
+                              rows={2}
+                              placeholder="Add a note that will be sent to the seller…"
+                              value={kycNotes[u.id] ?? ''}
+                              onChange={(e) => setKycNotes(prev => ({ ...prev, [u.id]: e.target.value }))}
+                            />
+                          </div>
+
                           <div className="adm__kyc-actions">
                             <button
                               type="button"
                               className="adm__btn adm__btn--ok"
                               disabled={actionId === u.id}
-                              onClick={() => void patchUser(u.id, { kycStatus: 'verified' })}
+                              onClick={() => void approveKyc(u.id)}
                             >
-                              <CheckCircle2 size={16} /> Approve
+                              <CheckCircle2 size={16} /> Approve Seller
                             </button>
                             <button
                               type="button"
                               className="adm__btn adm__btn--err"
                               disabled={actionId === u.id}
-                              onClick={() => void patchUser(u.id, { kycStatus: 'rejected' })}
+                              onClick={() => void rejectKyc(u.id)}
                             >
                               <XCircle size={16} /> Reject
                             </button>
@@ -495,6 +617,192 @@ export function AdminDashboardPage() {
           </>
         )}
       </div>
+
+      {/* ── Create Seller Modal ── */}
+      {showCreateSeller && (
+        <div className="adm__modal-overlay" role="dialog" aria-modal="true" aria-labelledby="create-seller-title">
+          <div className="adm__modal">
+            <div className="adm__modal-head">
+              <h2 id="create-seller-title"><UserPlus size={18} /> Create Seller Account</h2>
+              <button type="button" className="adm__modal-close" aria-label="Close" onClick={() => setShowCreateSeller(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {createSellerSuccess ? (
+              <div className="adm__modal-body">
+                <div className="adm__modal-success">
+                  <CheckCircle2 size={40} />
+                  <p>{createSellerSuccess}</p>
+                  <button type="button" className="adm__btn adm__btn--primary" onClick={() => setShowCreateSeller(false)}>
+                    Done
+                  </button>
+                  <button
+                    type="button"
+                    className="adm__btn adm__btn--ghost"
+                    onClick={() => { setCreateSellerSuccess(null) }}
+                  >
+                    Create Another
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form className="adm__modal-body" onSubmit={handleCreateSeller}>
+                {createSellerError && (
+                  <div className="adm__alert" role="alert">
+                    <AlertTriangle size={16} /> {createSellerError}
+                  </div>
+                )}
+
+                <p className="adm__modal-hint">
+                  Create a seller account directly. If <strong>Pre-approved</strong> is on, the account is immediately verified and can list items without going through KYC review.
+                </p>
+
+                <div className="adm__form-section-label">Account Details</div>
+                <div className="adm__form-row">
+                  <div className="adm__form-group">
+                    <label className="adm__form-label">Full Name <span className="adm__req">*</span></label>
+                    <input
+                      type="text"
+                      className="adm__form-input"
+                      placeholder="e.g. Jane Smith"
+                      value={createSellerForm.fullName}
+                      onChange={e => setCreateSellerForm(p => ({ ...p, fullName: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div className="adm__form-group">
+                    <label className="adm__form-label">Email Address <span className="adm__req">*</span></label>
+                    <input
+                      type="email"
+                      className="adm__form-input"
+                      placeholder="seller@example.com"
+                      value={createSellerForm.email}
+                      onChange={e => setCreateSellerForm(p => ({ ...p, email: e.target.value }))}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="adm__form-group">
+                  <label className="adm__form-label">Password <span className="adm__req">*</span></label>
+                  <div className="adm__form-pw-wrap">
+                    <input
+                      type={showCreatePw ? 'text' : 'password'}
+                      className="adm__form-input"
+                      placeholder="Minimum 8 characters"
+                      minLength={8}
+                      value={createSellerForm.password}
+                      onChange={e => setCreateSellerForm(p => ({ ...p, password: e.target.value }))}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="adm__form-pw-toggle"
+                      aria-label={showCreatePw ? 'Hide password' : 'Show password'}
+                      onClick={() => setShowCreatePw(v => !v)}
+                    >
+                      {showCreatePw ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="adm__form-row">
+                  <div className="adm__form-group">
+                    <label className="adm__form-label">Phone</label>
+                    <input
+                      type="tel"
+                      className="adm__form-input"
+                      placeholder="+1 555 000 0000"
+                      value={createSellerForm.phone}
+                      onChange={e => setCreateSellerForm(p => ({ ...p, phone: e.target.value }))}
+                    />
+                  </div>
+                  <div className="adm__form-group">
+                    <label className="adm__form-label">City</label>
+                    <input
+                      type="text"
+                      className="adm__form-input"
+                      placeholder="City"
+                      value={createSellerForm.city}
+                      onChange={e => setCreateSellerForm(p => ({ ...p, city: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="adm__form-section-label" style={{ marginTop: '1rem' }}>Business Profile</div>
+                <div className="adm__form-row">
+                  <div className="adm__form-group">
+                    <label className="adm__form-label">Business Name</label>
+                    <input
+                      type="text"
+                      className="adm__form-input"
+                      placeholder="Trading name"
+                      value={createSellerForm.businessName}
+                      onChange={e => setCreateSellerForm(p => ({ ...p, businessName: e.target.value }))}
+                    />
+                  </div>
+                  <div className="adm__form-group">
+                    <label className="adm__form-label">Business Type</label>
+                    <select
+                      className="adm__form-select"
+                      value={createSellerForm.businessType}
+                      onChange={e => setCreateSellerForm(p => ({ ...p, businessType: e.target.value as typeof createSellerForm.businessType }))}
+                    >
+                      <option value="">Select type…</option>
+                      <option value="individual">Individual / Sole Trader</option>
+                      <option value="registered_business">Registered Business</option>
+                      <option value="cooperative">Cooperative / Partnership</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="adm__form-group">
+                  <label className="adm__form-label">Business Description</label>
+                  <textarea
+                    className="adm__form-textarea"
+                    rows={2}
+                    placeholder="Brief description of products or expertise…"
+                    value={createSellerForm.businessDescription}
+                    onChange={e => setCreateSellerForm(p => ({ ...p, businessDescription: e.target.value }))}
+                  />
+                </div>
+
+                <div className="adm__form-toggle-row">
+                  <label className="adm__form-toggle-label" htmlFor="pre-approved-toggle">
+                    <div>
+                      <span>Pre-approve account</span>
+                      <span className="adm__form-toggle-sub">Account is immediately verified — seller can list items right away. Turn off to require standard KYC review.</span>
+                    </div>
+                  </label>
+                  <div
+                    id="pre-approved-toggle"
+                    role="checkbox"
+                    aria-checked={createSellerForm.preApproved}
+                    tabIndex={0}
+                    className={`adm__toggle${createSellerForm.preApproved ? ' adm__toggle--on' : ''}`}
+                    onClick={() => setCreateSellerForm(p => ({ ...p, preApproved: !p.preApproved }))}
+                    onKeyDown={e => e.key === ' ' && setCreateSellerForm(p => ({ ...p, preApproved: !p.preApproved }))}
+                  >
+                    <div className="adm__toggle-thumb" />
+                  </div>
+                </div>
+
+                <div className="adm__modal-foot">
+                  <button type="button" className="adm__btn adm__btn--ghost" onClick={() => setShowCreateSeller(false)}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="adm__btn adm__btn--primary" disabled={createSellerSaving}>
+                    {createSellerSaving
+                      ? <><RefreshCw size={14} className="adm__spin" /> Creating…</>
+                      : <><UserPlus size={14} /> Create Seller</>}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

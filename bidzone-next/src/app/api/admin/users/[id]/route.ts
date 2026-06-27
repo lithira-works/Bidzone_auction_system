@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { connectToDatabase } from '@/lib/mongodb'
 import { isProtectedAdmin, requireAdmin, toAdminUserSummary } from '@/lib/admin'
 import { UserModel } from '@/models/User'
+import { NotificationModel } from '@/models/Notification'
 
 type RouteParams = { params: Promise<{ id: string }> }
 
@@ -19,6 +20,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       fraudCheckPassed?: boolean
       phoneVerified?: boolean
       role?: string
+      kycNotes?: string
     }
 
     await connectToDatabase()
@@ -48,6 +50,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     if (typeof body.listingAllowed === 'boolean') updates.listingAllowed = body.listingAllowed
     if (typeof body.fraudCheckPassed === 'boolean') updates.fraudCheckPassed = body.fraudCheckPassed
     if (typeof body.phoneVerified === 'boolean') updates.phoneVerified = body.phoneVerified
+    if (typeof body.kycNotes === 'string') updates.kycNotes = body.kycNotes.trim()
 
     if (body.role === 'bidder' || body.role === 'seller') {
       updates.role = body.role
@@ -73,6 +76,29 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     if (!updated) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    /* Send seller notification on KYC decision */
+    if (updates.kycStatus === 'verified') {
+      await NotificationModel.create({
+        userId: id,
+        kind: 'seller_approved',
+        read: false,
+        meta: {
+          message: 'Congratulations! Your seller application has been approved. You can now list items on the marketplace.',
+          adminNote: body.kycNotes ?? '',
+        },
+      })
+    } else if (updates.kycStatus === 'rejected') {
+      await NotificationModel.create({
+        userId: id,
+        kind: 'seller_rejected',
+        read: false,
+        meta: {
+          message: 'Your seller application was not approved at this time. Please review the feedback and reapply.',
+          adminNote: body.kycNotes ?? '',
+        },
+      })
     }
 
     return NextResponse.json({ user: toAdminUserSummary(updated) })

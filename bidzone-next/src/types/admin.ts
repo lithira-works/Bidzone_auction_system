@@ -31,6 +31,11 @@ export type AdminUserRow = {
   adminType?: 'super' | 'delegated' | null
   createdAt: string
   updatedAt: string
+  businessName?: string
+  businessType?: string
+  businessDescription?: string
+  kycSubmittedAt?: string | null
+  kycNotes?: string
 }
 
 export type AdminAuctionRow = {

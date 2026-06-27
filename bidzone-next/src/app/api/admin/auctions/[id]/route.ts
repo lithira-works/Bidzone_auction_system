@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/admin'
 import { toAdminAuctionSummary } from '@/lib/auctionMapper'
 import { AuctionModel } from '@/models/Auction'
 import { BidModel } from '@/models/Bid'
+import { NotificationModel } from '@/models/Notification'
 import { formatTimeLeftCompact } from '@/lib/auctionTime'
 import type { AuctionItem } from '@/data/auctions'
 
@@ -21,6 +22,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       moderationStatus?: string
       featured?: boolean
       urgent?: boolean
+      moderationNote?: string
     }
 
     await connectToDatabase()
@@ -53,6 +55,31 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     }
 
     const updated = await AuctionModel.findByIdAndUpdate(id, { $set: updates }, { new: true })
+
+    /* Send seller notification on moderation decision */
+    if (auction.sellerId && updates.moderationStatus === 'approved') {
+      await NotificationModel.create({
+        userId: auction.sellerId.toString(),
+        kind: 'listing_approved',
+        read: false,
+        meta: {
+          listingTitle: auction.title,
+          message: `Your listing "${auction.title}" has been approved and is now live on the marketplace.`,
+          adminNote: body.moderationNote ?? '',
+        },
+      })
+    } else if (auction.sellerId && updates.moderationStatus === 'rejected') {
+      await NotificationModel.create({
+        userId: auction.sellerId.toString(),
+        kind: 'listing_rejected',
+        read: false,
+        meta: {
+          listingTitle: auction.title,
+          message: `Your listing "${auction.title}" was not approved. Please review the feedback below.`,
+          adminNote: body.moderationNote ?? '',
+        },
+      })
+    }
 
     return NextResponse.json({ auction: toAdminAuctionSummary(updated!) })
   } catch (err) {

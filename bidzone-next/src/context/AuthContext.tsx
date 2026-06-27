@@ -55,6 +55,8 @@ type AuthContextValue = {
     phone: string
     nicImageDataUrl: string | null
   }) => Promise<'ok' | 'not_bidder'>
+  /** Merge a partial profile update into the cached user (call after PATCH /auth/me) */
+  updateUser: (patch: Partial<UserProfile>) => void
 }
 
 type AuthResponse = { token: string; user: UserProfile }
@@ -208,6 +210,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user],
   )
 
+  const updateUser = useCallback((patch: Partial<UserProfile>) => {
+    setUser(prev => prev ? { ...prev, ...patch } : prev)
+  }, [])
+
   const isAuthenticated = user !== null
   const isAdmin = user?.role === 'admin'
   const canAccessSellerTools =
@@ -226,6 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       registerBidder,
       registerNewVerifiedSeller,
       upgradeCurrentUserToSeller,
+      updateUser,
     }),
     [
       user,
@@ -239,6 +246,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       registerBidder,
       registerNewVerifiedSeller,
       upgradeCurrentUserToSeller,
+      updateUser,
     ],
   )
 
