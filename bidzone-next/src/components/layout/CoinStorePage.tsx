@@ -4,7 +4,7 @@ import Link from 'next/link'
 import {
   ArrowLeft, ShieldCheck, Zap, CreditCard, Landmark, Wallet as WalletIcon,
   Bitcoin, CheckCircle2, AlertCircle, RefreshCw, X, Receipt, Sparkles,
-  History, TrendingUp, TrendingDown, Lock,
+  History, TrendingUp, TrendingDown, Lock, Check, Infinity as InfinityIcon,
 } from 'lucide-react'
 import { SiteHeader } from '@/components/layout/SiteHeader'
 import { SiteFooter } from '@/components/layout/SiteFooter'
@@ -58,13 +58,15 @@ type CoinTx = {
 const fmtBc = (n: number) => n.toLocaleString('en-US')
 const fmtUsd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
 
+const QUICK_PRESETS = [1000, 2500, 5000, 10000, 25000, 50000]
+
 function gatewayIcon(provider: Gateway['provider']) {
   switch (provider) {
-    case 'card': return <CreditCard size={17} />
-    case 'paypal': return <WalletIcon size={17} />
-    case 'bank_transfer': return <Landmark size={17} />
-    case 'mobile_wallet': return <WalletIcon size={17} />
-    case 'crypto': return <Bitcoin size={17} />
+    case 'card': return <CreditCard size={18} />
+    case 'paypal': return <WalletIcon size={18} />
+    case 'bank_transfer': return <Landmark size={18} />
+    case 'mobile_wallet': return <WalletIcon size={18} />
+    case 'crypto': return <Bitcoin size={18} />
   }
 }
 
@@ -171,6 +173,22 @@ export function CoinStorePage() {
     : 0
   const orderTotal = order ? Math.round((order.price + gatewayFee) * 100) / 100 : 0
 
+  const bestValueId = useMemo(() => {
+    if (packages.length < 2) return null
+    let best: CoinPackage | null = null
+    let bestRate = Infinity
+    for (const p of packages) {
+      const rate = p.priceUSD / p.totalBc
+      if (rate < bestRate) { bestRate = rate; best = p }
+    }
+    return best?.id ?? null
+  }, [packages])
+
+  const quickChips = useMemo(() => {
+    if (!settings) return []
+    return QUICK_PRESETS.filter(v => v >= settings.customMinBc && v <= settings.customMaxBc)
+  }, [settings])
+
   function pickPackage(pkg: CoinPackage) {
     setSelectedPkg(pkg)
     setCustomActive(false)
@@ -181,6 +199,11 @@ export function CoinStorePage() {
     setSelectedPkg(null)
     setCustomActive(true)
     setPurchaseError(null)
+  }
+
+  function pickQuickChip(v: number) {
+    setCustomBc(String(v))
+    activateCustom()
   }
 
   async function confirmPurchase() {
@@ -214,30 +237,23 @@ export function CoinStorePage() {
       <SiteHeader />
 
       <main className="coins__main">
-        {/* ── Hero / wallet strip ── */}
+        {/* ── Hero ── */}
         <section className="coins__hero">
-          <div className="coins__hero-left">
-            <Link href="/home" className="coins__back">
-              <ArrowLeft size={15} /> Marketplace
-            </Link>
-            <h1 className="coins__title">
-              <Sparkles size={22} className="coins__title-spark" />
-              BidZone Coin Store
-            </h1>
+          <Link href="/home" className="coins__back">
+            <ArrowLeft size={15} /> Back to Marketplace
+          </Link>
+          <div className="coins__hero-body">
+            <span className="coins__eyebrow"><Sparkles size={12} /> BIDZONE WALLET</span>
+            <h1 className="coins__title">Buy BidZone Currency</h1>
             <p className="coins__subtitle">
-              BidZone Currency (BC) powers every bid. Top up your wallet securely and start winning auctions.
+              BC powers every bid on BidZone. Purchase coins securely, top up your wallet instantly,
+              and start winning auctions today.
             </p>
-          </div>
-
-          <div className="coins__wallet-card">
-            <div className="coins__wallet-coin"><BcCoin size={44} /></div>
-            <div className="coins__wallet-info">
-              <span className="coins__wallet-label">Your Balance</span>
-              <span className="coins__wallet-value">{fmtBc(balance)} <em>BC</em></span>
+            <div className="coins__trust-row">
+              <span className="coins__trust-item"><ShieldCheck size={14} /> Bank-level security</span>
+              <span className="coins__trust-item"><Zap size={14} /> Instant delivery</span>
+              <span className="coins__trust-item"><InfinityIcon size={14} /> Coins never expire</span>
             </div>
-            <button type="button" className="coins__wallet-history" onClick={() => setShowHistory(true)}>
-              <History size={14} /> History
-            </button>
           </div>
         </section>
 
@@ -248,145 +264,215 @@ export function CoinStorePage() {
           </div>
         )}
 
-        {/* ── Packages grid ── */}
-        <section className="coins__section">
-          <h2 className="coins__section-title">Choose a Package</h2>
-          {loading ? (
-            <div className="coins__grid">
-              {Array.from({ length: 6 }, (_, i) => <div key={i} className="coins__pkg coins__pkg--skeleton" />)}
-            </div>
-          ) : (
-            <div className="coins__grid">
-              {packages.map(pkg => (
-                <button
-                  key={pkg.id}
-                  type="button"
-                  className={`coins__pkg coins__pkg--${pkg.tier}${selectedPkg?.id === pkg.id ? ' coins__pkg--selected' : ''}`}
-                  onClick={() => pickPackage(pkg)}
-                >
-                  {pkg.badge && <span className="coins__pkg-badge">{pkg.badge}</span>}
-                  <div className="coins__pkg-coin"><BcCoin size={52} /></div>
-                  <span className="coins__pkg-name">{pkg.name}</span>
-                  <span className="coins__pkg-amount">{fmtBc(pkg.bcAmount)} BC</span>
-                  {pkg.bonusBc > 0 && (
-                    <span className="coins__pkg-bonus">
-                      <Zap size={12} /> +{fmtBc(pkg.bonusBc)} bonus
-                    </span>
-                  )}
-                  <span className="coins__pkg-price">{fmtUsd(pkg.priceUSD)}</span>
-                  {selectedPkg?.id === pkg.id && (
-                    <span className="coins__pkg-check"><CheckCircle2 size={18} /></span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
+        {/* ── Two-column layout: selection + sticky checkout ── */}
+        <div className="coins__layout">
+          <div className="coins__col-main">
 
-        {/* ── Custom amount ── */}
-        {settings?.customEnabled && (
-          <section className="coins__section">
-            <h2 className="coins__section-title">Or Enter a Custom Amount</h2>
-            <div className={`coins__custom${customActive ? ' coins__custom--active' : ''}`}>
-              <div className="coins__custom-coin"><BcCoin size={38} /></div>
-              <div className="coins__custom-input-wrap">
-                <input
-                  type="number"
-                  className="coins__custom-input"
-                  placeholder={`${fmtBc(settings.customMinBc)} – ${fmtBc(settings.customMaxBc)}`}
-                  min={settings.customMinBc}
-                  max={settings.customMaxBc}
-                  value={customBc}
-                  onFocus={activateCustom}
-                  onChange={e => { setCustomBc(e.target.value); activateCustom() }}
-                />
-                <span className="coins__custom-suffix">BC</span>
+            {/* ── Packages ── */}
+            <section className="coins__section">
+              <div className="coins__section-head">
+                <h2 className="coins__section-title">
+                  <span className="coins__step-num">1</span> Choose a Package
+                </h2>
               </div>
-              <div className="coins__custom-meta">
-                {customActive && customBc && !customValid ? (
-                  <span className="coins__custom-err">
-                    <AlertCircle size={13} />
-                    {customAmount < settings.customMinBc
-                      ? `Minimum ${fmtBc(settings.customMinBc)} BC`
-                      : `Maximum ${fmtBc(settings.customMaxBc)} BC`}
-                  </span>
-                ) : (
-                  <span className="coins__custom-rate">
-                    Rate: {fmtUsd(settings.usdPerBc)} / BC
-                    {customActive && customValid && (
-                      <strong> · {fmtUsd(Math.round(customAmount * settings.usdPerBc * 100) / 100)}</strong>
-                    )}
-                  </span>
-                )}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* ── Payment method ── */}
-        <section className="coins__section">
-          <h2 className="coins__section-title">Payment Method</h2>
-          <div className="coins__gateways">
-            {gateways.map(g => (
-              <button
-                key={g.id}
-                type="button"
-                className={`coins__gateway${gatewayId === g.id ? ' coins__gateway--selected' : ''}`}
-                onClick={() => setGatewayId(g.id)}
-              >
-                <span className="coins__gateway-icon">{gatewayIcon(g.provider)}</span>
-                <span className="coins__gateway-name">{g.name}</span>
-                <span className="coins__gateway-fee">
-                  {g.feePercent > 0 ? `${g.feePercent}% fee` : 'No fee'}
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Order summary + buy ── */}
-        <section className="coins__checkout">
-          <div className="coins__summary">
-            <h3><Receipt size={16} /> Order Summary</h3>
-            {order ? (
-              <>
-                <div className="coins__summary-row">
-                  <span>{order.label}</span>
-                  <strong>{fmtBc(order.bc)} BC</strong>
+              {loading ? (
+                <div className="coins__grid">
+                  {Array.from({ length: 6 }, (_, i) => <div key={i} className="coins__pkg coins__pkg--skeleton" />)}
                 </div>
-                <div className="coins__summary-row">
-                  <span>Price</span>
-                  <strong>{fmtUsd(order.price)}</strong>
+              ) : (
+                <div className="coins__grid">
+                  {packages.map(pkg => {
+                    const isSelected = selectedPkg?.id === pkg.id
+                    const isBestValue = pkg.id === bestValueId
+                    return (
+                      <button
+                        key={pkg.id}
+                        type="button"
+                        className={`coins__pkg coins__pkg--${pkg.tier}${isSelected ? ' coins__pkg--selected' : ''}${pkg.badge ? ' coins__pkg--featured' : ''}`}
+                        onClick={() => pickPackage(pkg)}
+                      >
+                        {pkg.badge && <span className="coins__pkg-badge">{pkg.badge}</span>}
+                        <div className="coins__pkg-coin-wrap"><BcCoin size={46} /></div>
+                        <span className="coins__pkg-name">{pkg.name}</span>
+
+                        <div className="coins__pkg-breakdown">
+                          <span className="coins__pkg-amount">{fmtBc(pkg.bcAmount)} BC</span>
+                          {pkg.bonusBc > 0 && (
+                            <span className="coins__pkg-bonus">
+                              <Zap size={11} /> +{fmtBc(pkg.bonusBc)} bonus
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="coins__pkg-foot">
+                          <span className="coins__pkg-price">{fmtUsd(pkg.priceUSD)}</span>
+                          {isBestValue && <span className="coins__pkg-value-tag">Best rate</span>}
+                        </div>
+
+                        <span className={`coins__pkg-select${isSelected ? ' coins__pkg-select--on' : ''}`}>
+                          {isSelected ? <><Check size={13} /> Selected</> : 'Select'}
+                        </span>
+                      </button>
+                    )
+                  })}
                 </div>
-                {gatewayFee > 0 && (
-                  <div className="coins__summary-row coins__summary-row--fee">
-                    <span>{selectedGateway?.name} fee ({selectedGateway?.feePercent}%)</span>
-                    <strong>{fmtUsd(gatewayFee)}</strong>
+              )}
+            </section>
+
+            {/* ── Custom amount ── */}
+            {settings?.customEnabled && (
+              <section className="coins__section">
+                <div className="coins__section-head">
+                  <h2 className="coins__section-title">
+                    <span className="coins__step-num">2</span> Or Enter a Custom Amount
+                  </h2>
+                </div>
+
+                <div className={`coins__custom-card${customActive ? ' coins__custom-card--active' : ''}`}>
+                  {quickChips.length > 0 && (
+                    <div className="coins__custom-chips">
+                      {quickChips.map(v => (
+                        <button
+                          key={v}
+                          type="button"
+                          className={`coins__custom-chip${customActive && customAmount === v ? ' coins__custom-chip--on' : ''}`}
+                          onClick={() => pickQuickChip(v)}
+                        >
+                          {fmtBc(v)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="coins__custom-body">
+                    <div className="coins__custom-coin"><BcCoin size={34} /></div>
+                    <div className="coins__custom-input-wrap">
+                      <input
+                        type="number"
+                        className="coins__custom-input"
+                        placeholder={`${fmtBc(settings.customMinBc)} – ${fmtBc(settings.customMaxBc)}`}
+                        min={settings.customMinBc}
+                        max={settings.customMaxBc}
+                        value={customBc}
+                        onFocus={activateCustom}
+                        onChange={e => { setCustomBc(e.target.value); activateCustom() }}
+                      />
+                      <span className="coins__custom-suffix">BC</span>
+                    </div>
+                    <div className="coins__custom-meta">
+                      {customActive && customBc && !customValid ? (
+                        <span className="coins__custom-err">
+                          <AlertCircle size={13} />
+                          {customAmount < settings.customMinBc
+                            ? `Min ${fmtBc(settings.customMinBc)} BC`
+                            : `Max ${fmtBc(settings.customMaxBc)} BC`}
+                        </span>
+                      ) : (
+                        <span className="coins__custom-rate">
+                          Rate: {fmtUsd(settings.usdPerBc)}/BC
+                          {customActive && customValid && (
+                            <strong> · {fmtUsd(Math.round(customAmount * settings.usdPerBc * 100) / 100)}</strong>
+                          )}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                )}
-                <div className="coins__summary-row coins__summary-row--total">
-                  <span>Total</span>
-                  <strong>{fmtUsd(orderTotal)}</strong>
                 </div>
-              </>
-            ) : (
-              <p className="coins__summary-empty">Select a package or enter a custom amount to continue.</p>
+              </section>
             )}
+
+            {/* ── Payment method ── */}
+            <section className="coins__section">
+              <div className="coins__section-head">
+                <h2 className="coins__section-title">
+                  <span className="coins__step-num">3</span> Payment Method
+                </h2>
+              </div>
+              <div className="coins__gateways">
+                {gateways.map(g => {
+                  const on = gatewayId === g.id
+                  return (
+                    <button
+                      key={g.id}
+                      type="button"
+                      className={`coins__gateway${on ? ' coins__gateway--selected' : ''}`}
+                      onClick={() => setGatewayId(g.id)}
+                    >
+                      <span className="coins__gateway-icon">{gatewayIcon(g.provider)}</span>
+                      <span className="coins__gateway-body">
+                        <span className="coins__gateway-name">{g.name}</span>
+                        <span className="coins__gateway-fee">
+                          {g.feePercent > 0 ? `${g.feePercent}% processing fee` : 'No processing fee'}
+                        </span>
+                      </span>
+                      <span className={`coins__gateway-radio${on ? ' coins__gateway-radio--on' : ''}`}>
+                        {on && <Check size={11} />}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
           </div>
 
-          <button
-            type="button"
-            className="coins__buy-btn"
-            disabled={!order || !selectedGateway}
-            onClick={() => { setPurchaseError(null); setConfirming(true) }}
-          >
-            <Lock size={15} /> Buy {order ? `${fmtBc(order.bc)} BC` : 'Coins'}
-          </button>
+          {/* ── Sticky checkout sidebar ── */}
+          <aside className="coins__col-side">
+            <div className="coins__side-sticky">
 
-          <p className="coins__secure-note">
-            <ShieldCheck size={13} /> Payments are processed securely. BC is credited instantly and never expires.
-          </p>
-        </section>
+              <div className="coins__side-card coins__wallet-card">
+                <div className="coins__wallet-coin"><BcCoin size={38} /></div>
+                <div className="coins__wallet-info">
+                  <span className="coins__wallet-label">Your Balance</span>
+                  <span className="coins__wallet-value">{fmtBc(balance)} <em>BC</em></span>
+                </div>
+                <button type="button" className="coins__wallet-history" onClick={() => setShowHistory(true)}>
+                  <History size={13} /> History
+                </button>
+              </div>
+
+              <div className="coins__side-card coins__summary">
+                <h3><Receipt size={15} /> Order Summary</h3>
+                {order ? (
+                  <>
+                    <div className="coins__summary-row">
+                      <span>{order.label}</span>
+                      <strong>{fmtBc(order.bc)} BC</strong>
+                    </div>
+                    <div className="coins__summary-row">
+                      <span>Price</span>
+                      <strong>{fmtUsd(order.price)}</strong>
+                    </div>
+                    {gatewayFee > 0 && (
+                      <div className="coins__summary-row coins__summary-row--fee">
+                        <span>{selectedGateway?.name} fee ({selectedGateway?.feePercent}%)</span>
+                        <strong>{fmtUsd(gatewayFee)}</strong>
+                      </div>
+                    )}
+                    <div className="coins__summary-row coins__summary-row--total">
+                      <span>Total</span>
+                      <strong>{fmtUsd(orderTotal)}</strong>
+                    </div>
+                  </>
+                ) : (
+                  <p className="coins__summary-empty">Select a package or enter a custom amount to see your order total.</p>
+                )}
+
+                <button
+                  type="button"
+                  className="coins__buy-btn"
+                  disabled={!order || !selectedGateway}
+                  onClick={() => { setPurchaseError(null); setConfirming(true) }}
+                >
+                  <Lock size={15} /> {order ? `Buy ${fmtBc(order.bc)} BC` : 'Select an Amount'}
+                </button>
+
+                <p className="coins__secure-note">
+                  <ShieldCheck size={13} /> Encrypted checkout · BC credited instantly
+                </p>
+              </div>
+            </div>
+          </aside>
+        </div>
       </main>
 
       {/* ── Confirm modal ── */}

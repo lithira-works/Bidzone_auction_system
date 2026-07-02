@@ -101,7 +101,7 @@ export async function PATCH(req: NextRequest) {
     const updated = await UserModel.findByIdAndUpdate(
       claims.userId,
       { $set: allowed },
-      { new: true, runValidators: true },
+      { returnDocument: 'after', runValidators: true },
     )
 
     if (!updated) {

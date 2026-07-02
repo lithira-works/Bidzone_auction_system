@@ -18,7 +18,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const notification = await NotificationModel.findOneAndUpdate(
       { _id: id, userId: claims.userId },
       { $set: { read: true } },
-      { new: true },
+      { returnDocument: 'after' },
     )
 
     if (!notification) {

@@ -55,7 +55,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (typeof body.active === 'boolean') updates.active = body.active
     if (body.sortOrder !== undefined && Number.isFinite(body.sortOrder)) updates.sortOrder = body.sortOrder
 
-    const pkg = await CoinPackageModel.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true })
+    const pkg = await CoinPackageModel.findByIdAndUpdate(id, { $set: updates }, { returnDocument: 'after', runValidators: true })
     if (!pkg) {
       return NextResponse.json({ error: 'Package not found' }, { status: 404 })
     }

@@ -72,7 +72,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
     }
 
-    const updated = await UserModel.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true })
+    const updated = await UserModel.findByIdAndUpdate(id, { $set: updates }, { returnDocument: 'after', runValidators: true })
 
     if (!updated) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })

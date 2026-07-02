@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
     const updated = await UserModel.findOneAndUpdate(
       { _id: claims.userId },
       { $inc: { bcBalance: bcCredit } },
-      { new: true, select: 'bcBalance' },
+      { returnDocument: 'after', select: 'bcBalance' },
     )
     if (!updated) {
       return NextResponse.json({ error: 'Account not found' }, { status: 404 })

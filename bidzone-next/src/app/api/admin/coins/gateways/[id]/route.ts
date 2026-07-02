@@ -37,7 +37,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (typeof body.enabled === 'boolean') updates.enabled = body.enabled
     if (body.sortOrder !== undefined && Number.isFinite(body.sortOrder)) updates.sortOrder = body.sortOrder
 
-    const gateway = await PaymentGatewayModel.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true })
+    const gateway = await PaymentGatewayModel.findByIdAndUpdate(id, { $set: updates }, { returnDocument: 'after', runValidators: true })
     if (!gateway) {
       return NextResponse.json({ error: 'Gateway not found' }, { status: 404 })
     }

@@ -7,7 +7,7 @@ async function getUserData(userId: string) {
   return UserDataModel.findOneAndUpdate(
     { userId },
     { $setOnInsert: { userId, cartIds: [], wishlistIds: [] } },
-    { upsert: true, new: true },
+    { upsert: true, returnDocument: 'after' },
   )
 }
 
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     const data = await UserDataModel.findOneAndUpdate(
       { userId: claims.userId },
       { $addToSet: { cartIds: body.auctionId } },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: 'after' },
     )
 
     return NextResponse.json({ ids: data.cartIds })
@@ -71,13 +71,13 @@ export async function DELETE(req: NextRequest) {
       data = await UserDataModel.findOneAndUpdate(
         { userId: claims.userId },
         { $set: { cartIds: [] } },
-        { upsert: true, new: true },
+        { upsert: true, returnDocument: 'after' },
       )
     } else {
       data = await UserDataModel.findOneAndUpdate(
         { userId: claims.userId },
         { $pull: { cartIds: body.auctionId } },
-        { upsert: true, new: true },
+        { upsert: true, returnDocument: 'after' },
       )
     }
 

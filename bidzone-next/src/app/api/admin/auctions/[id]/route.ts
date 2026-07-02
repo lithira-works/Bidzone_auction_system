@@ -54,7 +54,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
     }
 
-    const updated = await AuctionModel.findByIdAndUpdate(id, { $set: updates }, { new: true })
+    const updated = await AuctionModel.findByIdAndUpdate(id, { $set: updates }, { returnDocument: 'after' })
 
     /* Send seller notification on moderation decision */
     if (auction.sellerId && updates.moderationStatus === 'approved') {

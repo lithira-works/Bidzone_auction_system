@@ -93,7 +93,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const updated = await AuctionModel.findByIdAndUpdate(
       id,
       { $set: updates },
-      { new: true, runValidators: true },
+      { returnDocument: 'after', runValidators: true },
     )
 
     return NextResponse.json({

@@ -102,7 +102,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       const debited = await UserModel.findOneAndUpdate(
         { _id: claims.userId, bcBalance: { $gte: holdNeeded } },
         { $inc: { bcBalance: -holdNeeded } },
-        { new: true, select: 'bcBalance' },
+        { returnDocument: 'after', select: 'bcBalance' },
       )
       if (!debited) {
         return NextResponse.json(
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       const released = await UserModel.findByIdAndUpdate(
         prevTopBid.userId,
         { $inc: { bcBalance: prevTopBid.amount } },
-        { new: true, select: 'bcBalance' },
+        { returnDocument: 'after', select: 'bcBalance' },
       )
       if (released) {
         await CoinTransactionModel.create({

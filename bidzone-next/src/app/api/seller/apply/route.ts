@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     const updated = await UserModel.findByIdAndUpdate(
       claims.userId,
       { $set: updates },
-      { new: true, runValidators: true },
+      { returnDocument: 'after', runValidators: true },
     )
 
     if (!updated) {
