@@ -1,4 +1,4 @@
-export type AdminTab = 'overview' | 'users' | 'kyc' | 'auctions' | 'admins' | 'banners'
+export type AdminTab = 'overview' | 'users' | 'kyc' | 'auctions' | 'admins' | 'banners' | 'coins'
 
 export type AdminStats = {
   totalUsers: number

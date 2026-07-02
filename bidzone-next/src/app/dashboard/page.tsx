@@ -11,9 +11,6 @@ export default function DashboardRoute() {
   useEffect(() => {
     if (!isAuthenticated) {
       router.replace('/')
-    } else if (user && user.role !== 'seller' && user.role !== 'admin') {
-      /* bidders without an application go to onboarding */
-      router.replace('/onboarding/seller-upgrade')
     } else if (user?.role === 'admin') {
       router.replace('/admin')
     }
@@ -22,9 +19,8 @@ export default function DashboardRoute() {
   if (!isAuthenticated) return null
   if (!user) return null
   if (user.role === 'admin') return null
-  /* allow any seller role — the dashboard itself handles approved/pending/rejected UI */
-  if (user.role !== 'seller') return null
 
+  /* All authenticated non-admin users can view the unified dashboard */
   return (
     <Suspense fallback={null}>
       <SellerDashboardPage />

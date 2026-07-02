@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+import crypto from 'crypto'
 import { connectToDatabase } from '@/lib/mongodb'
 import { AuctionModel } from '@/models/Auction'
 import { BidModel } from '@/models/Bid'
 import { requireAuth } from '@/lib/auth'
 import { UserModel } from '@/models/User'
+import { CoinTransactionModel } from '@/models/Coin'
+
+function txRef(prefix: string) {
+  return `${prefix}-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`
+}
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -72,7 +78,80 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
 
     const bidder = await UserModel.findById(claims.userId)
-    const userName = bidder?.fullName ?? 'Bidder'
+    if (!bidder) {
+      return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+    }
+    const userName = bidder.fullName ?? 'Bidder'
+
+    /* ═══ BIDZONE CURRENCY (BC) ESCROW ═══
+       1 bid dollar = 1 BC. The full bid amount is held from the bidder's
+       wallet while they lead. When outbid, the previous leader's hold is
+       released back automatically. */
+
+    /* Current leader (previous highest bid) */
+    const prevTopBid = await BidModel.findOne({ auctionId: id }).sort({ amount: -1, placedAt: -1 })
+
+    /* If the same user is raising their own bid, only the difference is held */
+    const alreadyHeld = prevTopBid && prevTopBid.userId === claims.userId ? prevTopBid.amount : 0
+    const holdNeeded = body.amount - alreadyHeld
+
+    let bidderBalance = bidder.bcBalance ?? 0
+
+    if (holdNeeded > 0) {
+      /* Atomic conditional debit — fails when balance is insufficient (no race) */
+      const debited = await UserModel.findOneAndUpdate(
+        { _id: claims.userId, bcBalance: { $gte: holdNeeded } },
+        { $inc: { bcBalance: -holdNeeded } },
+        { new: true, select: 'bcBalance' },
+      )
+      if (!debited) {
+        return NextResponse.json(
+          {
+            error: `Insufficient BidZone Currency. You need ${holdNeeded.toLocaleString()} BC to place this bid — top up in the Coin Store.`,
+            code: 'INSUFFICIENT_BC',
+            required: holdNeeded,
+            balance: bidder.bcBalance ?? 0,
+          },
+          { status: 402 },
+        )
+      }
+
+      bidderBalance = debited.bcBalance
+
+      await CoinTransactionModel.create({
+        userId: claims.userId,
+        type: 'bid_hold',
+        bcAmount: -holdNeeded,
+        balanceAfter: debited.bcBalance,
+        reference: txRef('HOLD'),
+        auctionId: id,
+        auctionTitle: auction.title,
+        status: 'completed',
+        note: `Bid hold for $${body.amount.toLocaleString()}`,
+      })
+    }
+
+    /* Release the outbid previous leader's escrow (different user only) */
+    if (prevTopBid && prevTopBid.userId !== claims.userId) {
+      const released = await UserModel.findByIdAndUpdate(
+        prevTopBid.userId,
+        { $inc: { bcBalance: prevTopBid.amount } },
+        { new: true, select: 'bcBalance' },
+      )
+      if (released) {
+        await CoinTransactionModel.create({
+          userId: prevTopBid.userId,
+          type: 'bid_release',
+          bcAmount: prevTopBid.amount,
+          balanceAfter: released.bcBalance,
+          reference: txRef('RLSE'),
+          auctionId: id,
+          auctionTitle: auction.title,
+          status: 'completed',
+          note: 'Outbid — escrow released',
+        })
+      }
+    }
 
     const bid = await BidModel.create({
       auctionId: id,
@@ -98,6 +177,7 @@ export async function POST(req: NextRequest, { params }: Params) {
           }),
           amount: bid.amount,
         },
+        bcBalance: bidderBalance,
       },
       { status: 201 },
     )

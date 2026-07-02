@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useHelp } from '@/context/HelpContext'
+import { BcCoin } from '@/components/ui/BcCoin'
 
 type Props = { onClose: () => void }
 
@@ -102,6 +103,16 @@ export function ProfileMenu({ onClose }: Props) {
       {/* ── Prominent action panel (non-admins only) ── */}
       {!isAdmin && (
         <div className="pm__action-panel">
+          {/* BidZone Currency wallet */}
+          <Link href="/coins" className="pm__bc-row" onClick={onClose}>
+            <BcCoin size={22} />
+            <div className="pm__bc-info">
+              <span className="pm__bc-label">BidZone Currency</span>
+              <strong className="pm__bc-value">{(user.bcBalance ?? 0).toLocaleString('en-US')} BC</strong>
+            </div>
+            <span className="pm__bc-buy">Buy Coins</span>
+          </Link>
+
           {/* Bidder → Become a Seller CTA */}
           {!isSeller && (
             <Link href="/onboarding/seller-upgrade" className="pm__action-cta pm__action-cta--gold" onClick={onClose}>
@@ -181,14 +192,14 @@ export function ProfileMenu({ onClose }: Props) {
         )}
 
         {(isPendingSeller || isRejectedSeller) && (
-          <Link href="/home" className="pm__item" role="menuitem" onClick={onClose}>
+          <Link href="/dashboard" className="pm__item" role="menuitem" onClick={onClose}>
             <BarChart3 size={15} className="pm__item-icon" />
             My Bids
           </Link>
         )}
 
         {!isSeller && !isAdmin && (
-          <Link href="/home" className="pm__item" role="menuitem" onClick={onClose}>
+          <Link href="/dashboard" className="pm__item" role="menuitem" onClick={onClose}>
             <BarChart3 size={15} className="pm__item-icon" />
             My Bids
           </Link>

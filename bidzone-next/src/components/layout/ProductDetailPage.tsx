@@ -15,6 +15,7 @@ import type { AuctionItem } from '@/data/auctions'
 import { secondsUntil } from '@/lib/auctionTime'
 import { estimateWinProbability } from '@/lib/winProbability'
 import { useListings } from '@/context/ListingsContext'
+import { useAuth } from '@/context/AuthContext'
 import { useWishlist } from '@/context/WishlistContext'
 import { useCart } from '@/context/CartContext'
 import { useNotifications } from '@/context/NotificationsContext'
@@ -46,6 +47,7 @@ export function ProductDetailPage() {
   const id = params?.id
   const router = useRouter()
   const { mergedCatalog, placeBid, fetchListingById } = useListings()
+  const { updateUser } = useAuth()
   const { has, toggle } = useWishlist()
   const { has: cartHasItem, add: addToCart } = useCart()
   const { addBidPlaced, addLotBroadcast } = useNotifications()
@@ -135,16 +137,28 @@ export function ProductDetailPage() {
       window.alert(t('product.bidRejected'))
       return
     }
-    const ok = await placeBid({
+    const res = await placeBid({
       auctionId: detail.id,
       amount: bidAmount,
       minBid,
       seedBidHistory: detail.bidHistory.map((row) => ({ id: row.id, user: row.user, time: row.time, amount: row.amount })),
     })
-    if (!ok) { window.alert(t('product.bidRejected')); return }
+    if (!res.ok) {
+      /* Insufficient BidZone Currency → offer to open the Coin Store */
+      if (res.error?.includes('BidZone Currency') || res.error?.includes('BC')) {
+        if (window.confirm(`${res.error}\n\nOpen the Coin Store now?`)) {
+          router.push('/coins')
+        }
+      } else {
+        window.alert(res.error ?? t('product.bidRejected'))
+      }
+      return
+    }
+    /* Sync the header wallet chip with the post-escrow balance */
+    if (res.bcBalance != null) updateUser({ bcBalance: res.bcBalance })
     addBidPlaced(bidAmount, detail.title)
     addLotBroadcast(detail.title, bidAmount)
-  }, [detail, bidAmount, minBid, placeBid, addBidPlaced, addLotBroadcast, t, isPending, isRejected])
+  }, [detail, bidAmount, minBid, placeBid, addBidPlaced, addLotBroadcast, t, isPending, isRejected, router, updateUser])
 
   const handleBuyNow = useCallback(() => {
     if (!detail || detail.buyNow == null) return

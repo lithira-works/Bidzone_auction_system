@@ -27,5 +27,6 @@ export function toUserProfile(user: IUser): UserProfile {
     businessDescription: user.businessDescription ?? '',
     kycSubmittedAt: user.kycSubmittedAt ? user.kycSubmittedAt.toISOString() : null,
     kycNotes: user.kycNotes ?? '',
+    bcBalance: user.bcBalance ?? 0,
   }
 }

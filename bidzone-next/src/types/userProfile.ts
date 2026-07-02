@@ -29,6 +29,8 @@ export type UserProfile = {
   businessDescription?: string
   kycSubmittedAt?: string | null
   kycNotes?: string
+  /** BidZone Currency wallet balance */
+  bcBalance?: number
 }
 
 export const DEMO_OTP_CODE = '123456'

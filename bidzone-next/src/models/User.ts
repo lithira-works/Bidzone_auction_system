@@ -25,6 +25,8 @@ export interface IUser extends Document {
   kycSubmittedAt: Date | null
   /** Admin notes shown to seller on approval/rejection */
   kycNotes: string
+  /** BidZone Currency wallet balance (whole BC units) */
+  bcBalance: number
   createdAt: Date
   updatedAt: Date
 }
@@ -58,6 +60,7 @@ const UserSchema = new Schema<IUser>(
     businessDescription: { type: String, default: '', trim: true },
     kycSubmittedAt: { type: Date, default: null },
     kycNotes: { type: String, default: '', trim: true },
+    bcBalance: { type: Number, default: 0, min: 0 },
   },
   { timestamps: true },
 )

@@ -42,9 +42,10 @@ type ListingsContextValue = {
   userListings: AuctionItem[]
   addListing: (item: AuctionItem) => Promise<{ pendingApproval: boolean }>
   updateListing: (item: AuctionItem) => Promise<{ pendingApproval: boolean }>
+  deleteListing: (id: string) => Promise<boolean>
   refreshCatalog: () => Promise<void>
   fetchListingById: (id: string) => Promise<AuctionItem | null>
-  placeBid: (args: PlaceBidArgs) => Promise<boolean>
+  placeBid: (args: PlaceBidArgs) => Promise<{ ok: boolean; error?: string; bcBalance?: number }>
 }
 
 const ListingsContext = createContext<ListingsContextValue | null>(null)
@@ -111,6 +112,17 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const deleteListing = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      await api.delete(`/auctions/${id}`)
+      setMyListings((prev) => prev.filter((p) => p.id !== id))
+      setMarketplaceCatalog((prev) => prev.filter((p) => p.id !== id))
+      return true
+    } catch {
+      return false
+    }
+  }, [])
+
   const updateListing = useCallback(async (item: AuctionItem): Promise<{ pendingApproval: boolean }> => {
     try {
       const res = await api.put<{ auction: AuctionItem; pendingApproval?: boolean }>(
@@ -134,8 +146,8 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
     }
   }, [refreshCatalog])
 
-  const placeBid = useCallback(async (args: PlaceBidArgs): Promise<boolean> => {
-    if (args.amount < args.minBid) return false
+  const placeBid = useCallback(async (args: PlaceBidArgs): Promise<{ ok: boolean; error?: string; bcBalance?: number }> => {
+    if (args.amount < args.minBid) return { ok: false, error: 'Bid is below the minimum.' }
 
     const entry: StoredBidHistoryEntry = {
       id: `b-${crypto.randomUUID()}`,
@@ -147,7 +159,7 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
     const inMine = myListingsRef.current.some((u) => u.id === args.auctionId)
 
     try {
-      const { bid } = await api.post<{ bid: StoredBidHistoryEntry }>(
+      const { bid, bcBalance } = await api.post<{ bid: StoredBidHistoryEntry; bcBalance?: number }>(
         `/auctions/${args.auctionId}/bids`,
         { amount: args.amount, minBid: args.minBid },
       )
@@ -191,9 +203,9 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
       }
 
       setLiveBidEpoch((e) => e + 1)
-      return true
-    } catch {
-      return false
+      return { ok: true, bcBalance }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Bid failed. Please try again.' }
     }
   }, [marketplaceCatalog])
 
@@ -210,6 +222,7 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
       userListings: myListings,
       addListing,
       updateListing,
+      deleteListing,
       refreshCatalog,
       fetchListingById,
       placeBid,
@@ -219,6 +232,7 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
       myListings,
       addListing,
       updateListing,
+      deleteListing,
       refreshCatalog,
       fetchListingById,
       placeBid,

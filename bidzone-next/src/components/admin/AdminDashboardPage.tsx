@@ -24,12 +24,14 @@ import {
   X,
   Eye,
   EyeOff,
+  Coins,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/apiClient'
 import { AdminAdminsPanel } from '@/components/admin/AdminAdminsPanel'
 import { AdminBannersPanel } from '@/components/admin/AdminBannersPanel'
 import { AdminListingsPanel } from '@/components/admin/AdminListingsPanel'
+import { AdminCoinsPanel } from '@/components/admin/AdminCoinsPanel'
 import type { AdminStatsResponse, AdminTab, AdminUserRow } from '@/types/admin'
 
 function formatMoney(n: number) {
@@ -71,6 +73,7 @@ const NAV: { id: AdminTab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'users', label: 'Users', icon: Users },
   { id: 'kyc', label: 'Seller Verification', icon: ShieldCheck },
   { id: 'auctions', label: 'Listings', icon: Gavel },
+  { id: 'coins', label: 'Coin Store', icon: Coins },
   { id: 'banners', label: 'Promotions', icon: Megaphone },
   { id: 'admins', label: 'Administrators', icon: Crown },
 ]
@@ -614,6 +617,8 @@ export function AdminDashboardPage() {
                 setActionId={setActionId}
               />
             )}
+
+            {tab === 'coins' && <AdminCoinsPanel onError={setError} />}
           </>
         )}
       </div>

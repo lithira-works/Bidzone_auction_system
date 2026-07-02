@@ -13,6 +13,7 @@ import { NotificationsPanel } from '@/components/panels/NotificationsPanel'
 import { WishlistPanel } from '@/components/panels/WishlistPanel'
 import { CartPanel } from '@/components/panels/CartPanel'
 import { ProfileMenu } from '@/components/ui/ProfileMenu'
+import { BcCoin } from '@/components/ui/BcCoin'
 
 const NAV_SLUGS = [
   { key: 'nav.allAuctions', slug: null as string | null },
@@ -154,6 +155,17 @@ function SiteHeaderInner() {
 
           <div className="site-header__actions">
             <LanguageSwitcher />
+
+            {/* BidZone Currency wallet — tap to open Coin Store */}
+            {isAuthenticated && !isAdmin && (
+              <Link href="/coins" className="site-header__bc-chip" title="Buy BidZone Currency">
+                <BcCoin size={18} />
+                <span className="site-header__bc-amount">
+                  {(user?.bcBalance ?? 0).toLocaleString('en-US')}
+                </span>
+                <span className="site-header__bc-plus">+</span>
+              </Link>
+            )}
 
             {/* Admin console shortcut in header */}
             {isAdmin && (
