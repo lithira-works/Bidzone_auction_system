@@ -156,17 +156,6 @@ function SiteHeaderInner() {
           <div className="site-header__actions">
             <LanguageSwitcher />
 
-            {/* BidZone Currency wallet — tap to open Coin Store */}
-            {isAuthenticated && !isAdmin && (
-              <Link href="/coins" className="site-header__bc-chip" title="Buy BidZone Currency">
-                <BcCoin size={18} />
-                <span className="site-header__bc-amount">
-                  {(user?.bcBalance ?? 0).toLocaleString('en-US')}
-                </span>
-                <span className="site-header__bc-plus">+</span>
-              </Link>
-            )}
-
             {/* Admin console shortcut in header */}
             {isAdmin && (
               <Link href="/admin" className="site-header__dashboard">
@@ -229,9 +218,20 @@ function SiteHeaderInner() {
               )}
             </button>
 
-            {/* ── Profile avatar / Sign-in ── */}
+            {/* ── Account cluster: BC wallet + profile avatar / Sign-in ── */}
             {isAuthenticated && user ? (
               <div className="sh-profile-wrap" ref={profileWrapRef}>
+                {/* BidZone Currency wallet — tap to open Coin Store */}
+                {!isAdmin && (
+                  <Link href="/coins" className="site-header__bc-chip" title="Buy BidZone Currency">
+                    <BcCoin size={18} />
+                    <span className="site-header__bc-amount">
+                      {(user.bcBalance ?? 0).toLocaleString('en-US')}
+                    </span>
+                    <span className="site-header__bc-plus">+</span>
+                  </Link>
+                )}
+
                 <button
                   type="button"
                   className="sh-avatar-btn"
