@@ -1605,11 +1605,20 @@ select {
 /* =========================================================
    WIN PROBABILITY GAUGE
    ========================================================= */
-.win-prob { display: flex; flex-direction: column; gap: 0.65rem; align-items: center; }
+.win-prob { display: flex; flex-direction: column; gap: 0.4rem; align-items: center; }
 .win-prob__gauge-wrap { position: relative; display: flex; justify-content: center; }
 .win-prob__gauge { display: block; }
-.win-prob__pct { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); font-size: 1.35rem; font-weight: 800; color: var(--bz-text); letter-spacing: -0.03em; }
-.win-prob__spark { max-width: 220px; border-radius: 8px; background: linear-gradient(180deg, var(--bz-ai-bg) 0%, var(--bz-ai-card) 100%); border: 1px solid color-mix(in srgb, var(--bz-ai-glow) 30%, var(--bz-card-border)); }
+.win-prob__scale-label { font-size: 8px; font-weight: 600; fill: var(--bz-text-dim); }
+.win-prob__readout { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+.win-prob__pct { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+.win-prob__pct small { font-size: 0.95rem; font-weight: 700; margin-left: 1px; opacity: 0.85; }
+.win-prob__band {
+  font-size: 0.62rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid;
+}
 
 /* =========================================================
    BID COACH PANEL
@@ -4967,8 +4976,6 @@ select {
   border-radius: 14px;
   align-self: stretch;
 }
-/* Hide the sparkline bundled inside WinProbabilityGauge — Price History covers it */
-.pd__intel-gauge .win-prob__spark { display: none; }
 .pd__intel-gauge-sub { font-size: 0.72rem; color: var(--bz-text-muted); text-align: center; margin: 0; line-height: 1.45; }
 .pd__intel-gauge-sub strong { color: var(--bz-gold); font-weight: 800; }
 
