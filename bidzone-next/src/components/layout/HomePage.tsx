@@ -2,7 +2,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { HelpCircle, TrendingUp } from 'lucide-react'
+import { HelpCircle, TrendingUp, Clock, SearchX, Star, ArrowRight } from 'lucide-react'
 import {
   Desktop,
   TShirt,
@@ -23,6 +23,7 @@ import { useListings } from '@/context/ListingsContext'
 import { useI18n } from '@/context/I18nContext'
 import { useHelp } from '@/context/HelpContext'
 import { categorySlugMatchesItem, queryMatchesItem } from '@/lib/auctionFilters'
+import { secondsUntil } from '@/lib/auctionTime'
 import type { PublicBanner } from '@/types/admin'
 
 const iconMap = {
@@ -45,13 +46,22 @@ function sortList(list: AuctionItem[], sort: SortKey) {
   else if (sort === 'bids') copy.sort((a, b) => b.bids - a.bids)
   else {
     const rank = (t: AuctionItem) => {
+      if (t.auctionEndsAt) {
+        const sec = secondsUntil(t.auctionEndsAt)
+        return sec > 0 ? sec : Number.MAX_SAFE_INTEGER
+      }
       if (t.urgent) return 0
       const m = t.timeLeft.match(/(\d+)h/)
-      return m ? Number(m[1]) : 99
+      return m ? Number(m[1]) * 3600 : Number.MAX_SAFE_INTEGER - 1
     }
     copy.sort((a, b) => rank(a) - rank(b))
   }
   return copy
+}
+
+/** Compact number formatting for hero stats: 12K, 4.2M… */
+function compact(n: number) {
+  return Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n)
 }
 
 export function HomePage() {
@@ -106,6 +116,24 @@ export function HomePage() {
     [mergedCatalog, q, categorySlug],
   )
 
+  /* ── Ending soon: live auctions closing first ── */
+  const endingSoon = useMemo(() => {
+    return mergedCatalog
+      .filter((item) => item.auctionEndsAt && secondsUntil(item.auctionEndsAt) > 0)
+      .sort((a, b) => secondsUntil(a.auctionEndsAt!) - secondsUntil(b.auctionEndsAt!))
+      .slice(0, 8)
+  }, [mergedCatalog])
+
+  /* ── Live hero stats derived from the real catalog ── */
+  const heroStats = useMemo(() => {
+    const liveCount = mergedCatalog.filter(
+      (item) => !item.auctionEndsAt || secondsUntil(item.auctionEndsAt) > 0,
+    ).length
+    const totalValue = mergedCatalog.reduce((sum, item) => sum + (item.currentBid || 0), 0)
+    const totalBids = mergedCatalog.reduce((sum, item) => sum + (item.bids || 0), 0)
+    return { liveCount, totalValue, totalBids }
+  }, [mergedCatalog])
+
   const hasFilters = Boolean(q.trim() || categorySlug)
 
   const categoryDisplay = useMemo(() => {
@@ -117,6 +145,10 @@ export function HomePage() {
 
   function clearFilters() {
     router.push('/home')
+  }
+
+  function scrollToAll() {
+    document.getElementById('all')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   return (
@@ -147,19 +179,29 @@ export function HomePage() {
               <span className="home-page__hero-title-gold">Win Big</span>
             </h2>
             <p className="home-page__hero-sub">{t('hero.sub')}</p>
-            <button type="button" className="home-page__hero-cta">{t('hero.cta')}</button>
+            <div className="home-page__hero-actions">
+              <button type="button" className="home-page__hero-cta" onClick={scrollToAll}>
+                {t('hero.cta')}
+                <ArrowRight size={16} aria-hidden />
+              </button>
+              <Link href="/home#categories" className="home-page__hero-cta-ghost">
+                Browse categories
+              </Link>
+            </div>
             <div className="home-page__hero-stats">
-              <div>
-                <div className="home-page__hero-stat-value">12K+</div>
-                <div className="home-page__hero-stat-label">Active Auctions</div>
+              <div className="home-page__hero-stat">
+                <div className="home-page__hero-stat-value">{compact(heroStats.liveCount)}</div>
+                <div className="home-page__hero-stat-label">Live Auctions</div>
               </div>
-              <div>
-                <div className="home-page__hero-stat-value">$4.2M</div>
+              <span className="home-page__hero-stat-sep" aria-hidden />
+              <div className="home-page__hero-stat">
+                <div className="home-page__hero-stat-value">${compact(heroStats.totalValue)}</div>
                 <div className="home-page__hero-stat-label">Total Value Bid</div>
               </div>
-              <div>
-                <div className="home-page__hero-stat-value">98K</div>
-                <div className="home-page__hero-stat-label">Happy Bidders</div>
+              <span className="home-page__hero-stat-sep" aria-hidden />
+              <div className="home-page__hero-stat">
+                <div className="home-page__hero-stat-value">{compact(heroStats.totalBids)}</div>
+                <div className="home-page__hero-stat-label">Bids Placed</div>
               </div>
             </div>
           </section>
@@ -172,6 +214,7 @@ export function HomePage() {
                   {categorySlug && categoryDisplay && (
                     <span>{q.trim() ? ' · ' : ''}{categoryDisplay}</span>
                   )}
+                  <span className="home-page__filters-count">{sorted.length} result{sorted.length === 1 ? '' : 's'}</span>
                 </p>
                 <button type="button" className="home-page__clear-filters" onClick={clearFilters}>
                   {t('home.clearFilters')}
@@ -179,13 +222,50 @@ export function HomePage() {
               </div>
             )}
 
+            {/* ── Ending soon (hidden while filtering) ── */}
+            {!hasFilters && endingSoon.length > 0 && (
+              <section className="home-page__section">
+                <div className="home-page__sec-head">
+                  <div>
+                    <p className="home-page__sec-eyebrow home-page__sec-eyebrow--red">
+                      <Clock size={12} aria-hidden /> Closing soon
+                    </p>
+                    <h2 className="home-page__sec-title">Ending Soon</h2>
+                  </div>
+                  <button type="button" className="home-page__sec-link" onClick={scrollToAll}>
+                    View all <ArrowRight size={14} aria-hidden />
+                  </button>
+                </div>
+                <div className="home-page__ending-row" role="list">
+                  {endingSoon.map((item) => (
+                    <div key={item.id} className="home-page__ending-cell" role="listitem">
+                      <AuctionCard item={item} />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             <section className="home-page__section">
-              <h2 className="home-page__section-title">
-                <span className="home-page__star" aria-hidden>★</span>{' '}
-                {t('home.featured')}
-              </h2>
+              <div className="home-page__sec-head">
+                <div>
+                  <p className="home-page__sec-eyebrow">
+                    <Star size={12} aria-hidden /> Hand-picked
+                  </p>
+                  <h2 className="home-page__sec-title">{t('home.featured')}</h2>
+                </div>
+                <span className="home-page__sec-count">{featuredFiltered.length}</span>
+              </div>
               {featuredFiltered.length === 0 ? (
-                <p className="home-page__empty">{t('home.noResults')}</p>
+                <div className="home-page__empty-state">
+                  <SearchX size={30} aria-hidden />
+                  <p>{t('home.noResults')}</p>
+                  {hasFilters && (
+                    <button type="button" className="home-page__empty-btn" onClick={clearFilters}>
+                      {t('home.clearFilters')}
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div className="home-page__grid home-page__grid--featured">
                   {featuredFiltered.map((item) => <AuctionCard key={item.id} item={item} />)}
@@ -194,7 +274,14 @@ export function HomePage() {
             </section>
 
             <section className="home-page__section" id="categories">
-              <h2 className="home-page__section-title home-page__section-title--plain">{t('home.browseCategory')}</h2>
+              <div className="home-page__sec-head">
+                <div>
+                  <p className="home-page__sec-eyebrow">
+                    <TrendingUp size={12} aria-hidden /> Explore
+                  </p>
+                  <h2 className="home-page__sec-title">{t('home.browseCategory')}</h2>
+                </div>
+              </div>
               <div className="home-page__cat-marquee" aria-label={t('home.browseCategory')}>
                 <div className="home-page__cat-track" aria-hidden="false">
                   {[...categories, ...categories].map((c, idx) => {
@@ -223,11 +310,15 @@ export function HomePage() {
             </section>
 
             <section className="home-page__section" id="all">
-              <div className="home-page__section-head">
-                <h2 className="home-page__section-title home-page__section-title--plain home-page__section-title--inline">
-                  <TrendingUp size={26} className="home-page__trend-icon" aria-hidden />
-                  {t('home.allAuctions', { count: sorted.length })}
-                </h2>
+              <div className="home-page__sec-head">
+                <div>
+                  <p className="home-page__sec-eyebrow">
+                    <TrendingUp size={12} aria-hidden /> Marketplace
+                  </p>
+                  <h2 className="home-page__sec-title">
+                    {t('home.allAuctions', { count: sorted.length })}
+                  </h2>
+                </div>
                 <label className="home-page__sort">
                   <span>{t('home.sortBy')}</span>
                   <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
@@ -239,7 +330,15 @@ export function HomePage() {
                 </label>
               </div>
               {sorted.length === 0 ? (
-                <p className="home-page__empty">{t('home.noResults')}</p>
+                <div className="home-page__empty-state">
+                  <SearchX size={30} aria-hidden />
+                  <p>{t('home.noResults')}</p>
+                  {hasFilters && (
+                    <button type="button" className="home-page__empty-btn" onClick={clearFilters}>
+                      {t('home.clearFilters')}
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div className="home-page__grid">
                   {sorted.map((item) => <AuctionCard key={item.id} item={item} />)}
