@@ -31,6 +31,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
           dateStyle: 'medium',
           timeStyle: 'short',
         }),
+        placedAtIso: new Date(b.placedAt).toISOString(),
         amount: b.amount,
       })),
     })
