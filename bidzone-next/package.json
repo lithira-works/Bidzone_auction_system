@@ -6,8 +6,9 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "next dev --turbopack",
-    "dev:clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && next dev --turbopack",
+    "predev": "node scripts/free-port-3000.mjs",
+    "dev": "next dev --turbopack -p 3000",
+    "dev:clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && next dev --turbopack -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

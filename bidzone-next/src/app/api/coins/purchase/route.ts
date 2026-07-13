@@ -10,6 +10,7 @@ import {
   PaymentGatewayModel,
 } from '@/models/Coin'
 import { ensureCoinDefaults, money, toCoinTransaction } from '@/lib/coins'
+import { checkBuyerAllowed } from '@/lib/accountStatus'
 
 type PurchaseBody = {
   /** Either a fixed package… */
@@ -52,12 +53,20 @@ export async function POST(req: NextRequest) {
     const [settings, gateway, user] = await Promise.all([
       CoinSettingsModel.findOne({ key: 'global' }),
       PaymentGatewayModel.findById(body.gatewayId),
-      UserModel.findById(claims.userId).select('bcBalance email'),
+      UserModel.findById(claims.userId).select(
+        'bcBalance email accountStatus suspendedUntil statusReason biddingBlocked',
+      ),
     ])
 
     if (!user) {
       return NextResponse.json({ error: 'Account not found' }, { status: 404 })
     }
+
+    const restriction = await checkBuyerAllowed(user)
+    if (restriction) {
+      return NextResponse.json({ error: restriction.reason, code: restriction.code }, { status: 403 })
+    }
+
     if (!gateway || !gateway.enabled) {
       return NextResponse.json({ error: 'Payment method unavailable' }, { status: 400 })
     }

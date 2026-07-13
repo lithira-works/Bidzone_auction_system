@@ -30,13 +30,26 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
     cached.promise = mongoose
       .connect(uri, {
         bufferCommands: false,
-        serverSelectionTimeoutMS: 8_000,
-        connectTimeoutMS: 8_000,
+        /* Generous timeouts — Atlas over slow/high-latency links can take >8s on cold start */
+        serverSelectionTimeoutMS: 20_000,
+        connectTimeoutMS: 20_000,
+        socketTimeoutMS: 45_000,
+        /* Skip IPv6 DNS attempts — avoids multi-second resolution stalls on Windows */
+        family: 4,
+        maxPoolSize: 10,
       })
       .then((m) => m);
   }
 
-  cached.conn = await cached.promise;
+  try {
+    cached.conn = await cached.promise;
+  } catch (err) {
+    /* Critical: clear the failed promise so the NEXT request retries a fresh
+       connection instead of re-awaiting the same rejected promise forever. */
+    cached.promise = null;
+    throw err;
+  }
+
   return cached.conn;
 }
 

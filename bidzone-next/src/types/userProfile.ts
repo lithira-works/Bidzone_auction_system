@@ -31,6 +31,11 @@ export type UserProfile = {
   kycNotes?: string
   /** BidZone Currency wallet balance */
   bcBalance?: number
+  /** Moderation state — active accounts omit reason/until */
+  accountStatus?: 'active' | 'banned' | 'suspended'
+  suspendedUntil?: string | null
+  statusReason?: string
+  biddingBlocked?: boolean
 }
 
 export const DEMO_OTP_CODE = '123456'

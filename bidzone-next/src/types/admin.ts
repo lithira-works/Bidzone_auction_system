@@ -36,6 +36,35 @@ export type AdminUserRow = {
   businessDescription?: string
   kycSubmittedAt?: string | null
   kycNotes?: string
+  accountStatus?: 'active' | 'banned' | 'suspended'
+  suspendedUntil?: string | null
+  statusReason?: string
+  statusUpdatedAt?: string | null
+  statusUpdatedBy?: string
+  biddingBlocked?: boolean
+}
+
+/** Seller verification application with identity documents (admin-only payload) */
+export type AdminKycRow = {
+  id: string
+  fullName: string
+  email: string
+  phone: string
+  city: string
+  role: string
+  kycStatus: string
+  businessName: string
+  businessType: string
+  businessDescription: string
+  kycSubmittedAt: string | null
+  kycNotes: string
+  docType: 'nic' | 'driving_license'
+  docFront: string
+  docBack: string
+  selfie: string
+  reviewedAt: string | null
+  reviewedBy: string
+  memberSince: string
 }
 
 export type AdminAuctionRow = {

@@ -10,6 +10,13 @@ export type NotificationKind =
   | 'seller_rejected'
   | 'listing_approved'
   | 'listing_rejected'
+  | 'account_banned'
+  | 'account_suspended'
+  | 'account_reinstated'
+  | 'seller_role_removed'
+  | 'bidding_blocked'
+  | 'bidding_restored'
+  | 'admin_warning'
 
 export interface INotification extends Document {
   _id: mongoose.Types.ObjectId
@@ -43,6 +50,13 @@ const NotificationSchema = new Schema<INotification>(
         'seller_rejected',
         'listing_approved',
         'listing_rejected',
+        'account_banned',
+        'account_suspended',
+        'account_reinstated',
+        'seller_role_removed',
+        'bidding_blocked',
+        'bidding_restored',
+        'admin_warning',
       ],
       required: true,
     },

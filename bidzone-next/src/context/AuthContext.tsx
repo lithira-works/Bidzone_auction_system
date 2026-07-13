@@ -15,8 +15,26 @@ import {
   setSessionUserId,
 } from '@/lib/userRegistry'
 import { parseGoogleIdToken } from '@/lib/googleAuth'
-import { api, setToken, clearToken, getToken } from '@/lib/apiClient'
+import { api, setToken, clearToken, getToken, ApiError } from '@/lib/apiClient'
 import type { UserProfile } from '@/types/userProfile'
+
+/** Surfaced when a login attempt or session refresh hits a banned/suspended account. */
+export type AccountLockInfo = {
+  code: 'account_banned' | 'account_suspended'
+  reason: string
+  suspendedUntil?: string
+}
+
+function extractLockInfo(err: unknown): AccountLockInfo | null {
+  if (!(err instanceof ApiError)) return null
+  const code = err.body.code as string | undefined
+  if (code !== 'account_banned' && code !== 'account_suspended') return null
+  return {
+    code,
+    reason: (err.body.reason as string) || err.message,
+    suspendedUntil: err.body.suspendedUntil as string | undefined,
+  }
+}
 
 export type BidderRegisterInput = {
   fullName: string
@@ -41,13 +59,16 @@ type AuthContextValue = {
   isAuthenticated: boolean
   isAdmin: boolean
   canAccessSellerTools: boolean
-  login: (email: string, password: string) => Promise<'ok' | 'invalid'>
-  loginWithGoogle: (idTokenCredential: string) => Promise<'ok' | 'invalid' | 'database_unavailable'>
+  login: (email: string, password: string) => Promise<'ok' | 'invalid' | 'locked'>
+  loginWithGoogle: (idTokenCredential: string) => Promise<'ok' | 'invalid' | 'database_unavailable' | 'locked'>
   loginWithGoogleProfile: (profile: {
     email: string
     name?: string
     picture?: string
-  }) => Promise<'ok' | 'invalid' | 'database_unavailable'>
+  }) => Promise<'ok' | 'invalid' | 'database_unavailable' | 'locked'>
+  /** Populated when login/session-refresh hits a banned or suspended account */
+  lockInfo: AccountLockInfo | null
+  clearLockInfo: () => void
   logout: () => void
   registerBidder: (input: BidderRegisterInput) => Promise<'ok' | 'email_taken'>
   registerNewVerifiedSeller: (input: SellerRegisterInput) => Promise<'ok' | 'email_taken'>
@@ -65,6 +86,9 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null)
+  const [lockInfo, setLockInfo] = useState<AccountLockInfo | null>(null)
+
+  const clearLockInfo = useCallback(() => setLockInfo(null), [])
 
   useEffect(() => {
     if (hasLegacyAuthOnly() && !getSessionUserId()) {
@@ -81,22 +105,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(u)
         setSessionUserId(u.id)
       })
-      .catch(() => {
+      .catch((err) => {
+        const lock = extractLockInfo(err)
+        if (lock) setLockInfo(lock)
         clearToken()
         setSessionUserId(null)
         clearLegacyAuthFlag()
       })
   }, [])
 
-  const login = useCallback(async (email: string, password: string): Promise<'ok' | 'invalid'> => {
+  const login = useCallback(async (email: string, password: string): Promise<'ok' | 'invalid' | 'locked'> => {
     try {
       const { token, user: u } = await api.post<AuthResponse>('/auth/login', { email, password })
       setToken(token)
       setSessionUserId(u.id)
       setUser(u)
       clearLegacyAuthFlag()
+      setLockInfo(null)
       return 'ok'
-    } catch {
+    } catch (err) {
+      const lock = extractLockInfo(err)
+      if (lock) {
+        setLockInfo(lock)
+        return 'locked'
+      }
       return 'invalid'
     }
   }, [])
@@ -106,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: string
       name?: string
       picture?: string
-    }): Promise<'ok' | 'invalid' | 'database_unavailable'> => {
+    }): Promise<'ok' | 'invalid' | 'database_unavailable' | 'locked'> => {
       try {
         const { token, user: u } = await api.post<AuthResponse>('/auth/google', {
           email: profile.email,
@@ -117,8 +149,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSessionUserId(u.id)
         setUser(u)
         clearLegacyAuthFlag()
+        setLockInfo(null)
         return 'ok'
       } catch (err) {
+        const lock = extractLockInfo(err)
+        if (lock) {
+          setLockInfo(lock)
+          return 'locked'
+        }
         if (err instanceof Error && err.message === 'database_unavailable') {
           return 'database_unavailable'
         }
@@ -128,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const loginWithGoogle = useCallback(async (idTokenCredential: string): Promise<'ok' | 'invalid' | 'database_unavailable'> => {
+  const loginWithGoogle = useCallback(async (idTokenCredential: string): Promise<'ok' | 'invalid' | 'database_unavailable' | 'locked'> => {
     const payload = parseGoogleIdToken(idTokenCredential)
     if (!payload?.email) return 'invalid'
     return loginWithGoogleProfile({
@@ -233,6 +271,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       registerNewVerifiedSeller,
       upgradeCurrentUserToSeller,
       updateUser,
+      lockInfo,
+      clearLockInfo,
     }),
     [
       user,
@@ -247,6 +287,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       registerNewVerifiedSeller,
       upgradeCurrentUserToSeller,
       updateUser,
+      lockInfo,
+      clearLockInfo,
     ],
   )
 

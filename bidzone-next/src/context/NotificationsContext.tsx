@@ -10,7 +10,23 @@ import {
 } from 'react'
 import { api, getToken } from '@/lib/apiClient'
 
-export type NotificationKind = 'outbid' | 'bid_placed' | 'won' | 'payment' | 'lot_broadcast'
+export type NotificationKind =
+  | 'outbid'
+  | 'bid_placed'
+  | 'won'
+  | 'payment'
+  | 'lot_broadcast'
+  | 'seller_approved'
+  | 'seller_rejected'
+  | 'listing_approved'
+  | 'listing_rejected'
+  | 'account_banned'
+  | 'account_suspended'
+  | 'account_reinstated'
+  | 'seller_role_removed'
+  | 'bidding_blocked'
+  | 'bidding_restored'
+  | 'admin_warning'
 
 export type NotificationItem = {
   id: string
@@ -22,6 +38,9 @@ export type NotificationItem = {
     bidAmount?: number
     rawItem?: string
     paymentTotal?: number
+    message?: string
+    adminNote?: string
+    listingTitle?: string
   }
 }
 

@@ -1,6 +1,10 @@
 'use client'
 import { useEffect } from 'react'
-import { Bell, Gavel, TrendingUp, X, Award, CreditCard } from 'lucide-react'
+import {
+  Bell, Gavel, TrendingUp, X, Award, CreditCard,
+  ShieldOff, Clock, UserMinus, ShoppingCart, MessageSquareWarning,
+  CheckCircle2, XCircle,
+} from 'lucide-react'
 import { useI18n } from '@/context/I18nContext'
 import { useHelp } from '@/context/HelpContext'
 import { useNotifications, type NotificationItem } from '@/context/NotificationsContext'
@@ -16,12 +20,27 @@ function formatWhen(ms: number, locale: string) {
   })
 }
 
+const MODERATION_TITLES: Partial<Record<NotificationItem['kind'], string>> = {
+  seller_approved: 'Seller Application Approved',
+  seller_rejected: 'Seller Application Rejected',
+  listing_approved: 'Listing Approved',
+  listing_rejected: 'Listing Rejected',
+  account_banned: 'Account Banned',
+  account_suspended: 'Account Suspended',
+  account_reinstated: 'Account Reinstated',
+  seller_role_removed: 'Seller Role Removed',
+  bidding_blocked: 'Bidding Restricted',
+  bidding_restored: 'Bidding Restored',
+  admin_warning: 'Warning from Admin',
+}
+
 function titleFor(n: NotificationItem, t: (k: string, v?: Record<string, string | number>) => string) {
   if (n.kind === 'outbid') return t('notif.outbidTitle')
   if (n.kind === 'bid_placed') return t('notif.bidTitle')
   if (n.kind === 'lot_broadcast') return t('notif.broadcastTitle')
   if (n.kind === 'payment') return t('notif.paymentTitle')
-  return t('notif.wonTitle')
+  if (n.kind === 'won') return t('notif.wonTitle')
+  return MODERATION_TITLES[n.kind] ?? 'Notification'
 }
 
 function bodyFor(n: NotificationItem, t: (k: string, v?: Record<string, string | number>) => string) {
@@ -37,7 +56,7 @@ function bodyFor(n: NotificationItem, t: (k: string, v?: Record<string, string |
   if (n.kind === 'payment' && n.meta.paymentTotal != null) {
     return t('notif.paymentBody', { amount: formatMoney(n.meta.paymentTotal) })
   }
-  return ''
+  return n.meta.message ?? n.meta.adminNote ?? ''
 }
 
 type Props = { open: boolean; onClose: () => void }
@@ -101,6 +120,13 @@ export function NotificationsPanel({ open, onClose }: Props) {
                   {n.kind === 'lot_broadcast' && <Gavel size={22} strokeWidth={2.25} />}
                   {n.kind === 'won' && <Award size={22} strokeWidth={2.25} />}
                   {n.kind === 'payment' && <CreditCard size={22} strokeWidth={2.25} />}
+                  {(n.kind === 'seller_approved' || n.kind === 'listing_approved' || n.kind === 'account_reinstated' || n.kind === 'bidding_restored') && <CheckCircle2 size={22} strokeWidth={2.25} />}
+                  {(n.kind === 'seller_rejected' || n.kind === 'listing_rejected') && <XCircle size={22} strokeWidth={2.25} />}
+                  {n.kind === 'account_banned' && <ShieldOff size={22} strokeWidth={2.25} />}
+                  {n.kind === 'account_suspended' && <Clock size={22} strokeWidth={2.25} />}
+                  {n.kind === 'seller_role_removed' && <UserMinus size={22} strokeWidth={2.25} />}
+                  {n.kind === 'bidding_blocked' && <ShoppingCart size={22} strokeWidth={2.25} />}
+                  {n.kind === 'admin_warning' && <MessageSquareWarning size={22} strokeWidth={2.25} />}
                 </span>
                 <span className="notif-panel__text">
                   <span className="notif-panel__item-title">{titleFor(n, t)}</span>

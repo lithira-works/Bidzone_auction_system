@@ -15,6 +15,8 @@ import {
   Users,
   TrendingUp,
   Package,
+  ShieldOff,
+  Clock,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useI18n } from '@/context/I18nContext'
@@ -45,7 +47,7 @@ export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState<string | null>(null)
-  const { login } = useAuth()
+  const { login, lockInfo: authLockInfo } = useAuth()
   const { t } = useI18n()
   const { openHelp } = useHelp()
   const router = useRouter()
@@ -57,6 +59,9 @@ export function LoginPage() {
     if (r === 'invalid') {
       setAuthError(t('login.errInvalid'))
       return
+    }
+    if (r === 'locked') {
+      return /* lockInfo banner below renders the reason */
     }
     router.replace('/home')
   }
@@ -138,6 +143,25 @@ export function LoginPage() {
                 Create a free account
               </Link>
             </p>
+
+            {authLockInfo && (
+              <div className={`lp__lock-banner lp__lock-banner--${authLockInfo.code === 'account_banned' ? 'banned' : 'suspended'}`} role="alert">
+                <span className="lp__lock-icon" aria-hidden>
+                  {authLockInfo.code === 'account_banned' ? <ShieldOff size={18} /> : <Clock size={18} />}
+                </span>
+                <div>
+                  <p className="lp__lock-title">
+                    {authLockInfo.code === 'account_banned' ? 'Account Banned' : 'Account Temporarily Suspended'}
+                  </p>
+                  <p className="lp__lock-reason">{authLockInfo.reason}</p>
+                  {authLockInfo.suspendedUntil && (
+                    <p className="lp__lock-until">
+                      Access restored: {new Date(authLockInfo.suspendedUntil).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Google – primary action */}
             <div className="lp__google-section">

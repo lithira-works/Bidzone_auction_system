@@ -28,5 +28,9 @@ export function toUserProfile(user: IUser): UserProfile {
     kycSubmittedAt: user.kycSubmittedAt ? user.kycSubmittedAt.toISOString() : null,
     kycNotes: user.kycNotes ?? '',
     bcBalance: user.bcBalance ?? 0,
+    accountStatus: user.accountStatus ?? 'active',
+    suspendedUntil: user.suspendedUntil ? user.suspendedUntil.toISOString() : null,
+    statusReason: user.statusReason ?? '',
+    biddingBlocked: user.biddingBlocked ?? false,
   }
 }

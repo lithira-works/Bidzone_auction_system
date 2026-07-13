@@ -6,6 +6,7 @@ import {
   ArrowLeft, ArrowRight, Check, CheckCircle2, Eye, EyeOff,
   Gavel, HelpCircle, IdCard, Lock, Mail, MapPin, Phone,
   Shield, ShieldCheck, Star, User, Briefcase, Clock, AlertCircle,
+  Camera, X, Sun, CreditCard,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useI18n } from '@/context/I18nContext'
@@ -38,12 +39,16 @@ const UPGRADE_STEPS: StepDef[] = [
 const STEP_ORDER: Step[] = ['account', 'business', 'phone', 'otp', 'nic', 'aml', 'done']
 
 const HERO_TL = [
-  { id: 'account'  as Step, label: 'Account details',    sub: 'Name, email & password'         },
-  { id: 'business' as Step, label: 'Business profile',   sub: 'Business name & description'    },
-  { id: 'phone'    as Step, label: 'Phone verification', sub: 'SMS one-time code'               },
-  { id: 'otp'      as Step, label: 'Code confirmation',  sub: 'Enter the code from your phone'  },
-  { id: 'nic'      as Step, label: 'Identity document',  sub: 'Upload NIC or passport scan'    },
+  { id: 'account'  as Step, label: 'Account details',    sub: 'Name, email & password'          },
+  { id: 'business' as Step, label: 'Business profile',   sub: 'Business name & description'     },
+  { id: 'phone'    as Step, label: 'Phone verification', sub: 'SMS one-time code'                },
+  { id: 'otp'      as Step, label: 'Code confirmation',  sub: 'Enter the code from your phone'   },
+  { id: 'nic'      as Step, label: 'Identity documents', sub: 'ID front & back + selfie photo'  },
 ]
+
+/* ── KYC document slots ── */
+type DocSlot = 'front' | 'back' | 'selfie'
+const MAX_DOC_BYTES = 6 * 1024 * 1024 /* keep in sync with the server cap */
 
 const BUSINESS_TYPES = [
   { value: 'individual',          label: 'Individual / Sole trader' },
@@ -72,16 +77,24 @@ export function SellerKycWizard(props: Props) {
   const [businessType,        setBusinessType]        = useState<string>(props.mode === 'upgrade' ? (props.bidder.businessType ?? 'individual') : 'individual')
   const [businessDescription, setBusinessDescription] = useState(props.mode === 'upgrade' ? (props.bidder.businessDescription ?? '') : '')
 
-  /* Phone / OTP / NIC */
+  /* Phone / OTP */
   const [phone,      setPhone]      = useState('')
   const [otp,        setOtp]        = useState('')
-  const [nicDataUrl, setNicDataUrl] = useState<string | null>(null)
   const [showPw,     setShowPw]     = useState(false)
   const [otpError,   setOtpError]   = useState<string | null>(null)
   const [regError,   setRegError]   = useState<string | null>(null)
   const [amlRunning, setAmlRunning] = useState(false)
 
-  const fileRef = useRef<HTMLInputElement>(null)
+  /* KYC identity documents */
+  const [docType,  setDocType]  = useState<'nic' | 'driving_license'>('nic')
+  const [docFront, setDocFront] = useState<string | null>(null)
+  const [docBack,  setDocBack]  = useState<string | null>(null)
+  const [selfie,   setSelfie]   = useState<string | null>(null)
+  const [docError, setDocError] = useState<string | null>(null)
+
+  const frontRef  = useRef<HTMLInputElement>(null)
+  const backRef   = useRef<HTMLInputElement>(null)
+  const selfieRef = useRef<HTMLInputElement>(null)
 
   const steps  = props.mode === 'new' ? NEW_STEPS : UPGRADE_STEPS
   const curIdx = STEP_ORDER.indexOf(step)
@@ -122,48 +135,94 @@ export function SellerKycWizard(props: Props) {
     setStep('nic')
   }
 
+  const allDocsUploaded = Boolean(docFront && docBack && selfie)
+
   function onNicNext(e: React.FormEvent) {
     e.preventDefault()
-    if (!nicDataUrl || amlRunning) return
+    if (!allDocsUploaded || amlRunning) return
+    setDocError(null)
     setAmlRunning(true)
     setStep('aml')
     window.setTimeout(async () => {
-      if (props.mode === 'new') {
-        const r = await registerNewVerifiedSeller({
-          fullName, email, password, address, city, phone, nicImageDataUrl: nicDataUrl,
-        })
-        if (r === 'email_taken') {
-          setRegError(t('onboard.errEmailTaken'))
-          setAmlRunning(false)
-          setStep('account')
-          return
-        }
-        /* After registration, submit the seller application with business fields */
-        await api.post('/seller/apply', {
-          phone,
-          businessName: businessName.trim(),
-          businessType,
-          businessDescription: businessDescription.trim(),
-        }).catch(() => {/* non-fatal */})
-      } else {
-        /* Upgrade flow: submit application */
-        await api.post('/seller/apply', {
-          phone,
-          businessName: businessName.trim(),
-          businessType,
-          businessDescription: businessDescription.trim(),
-        }).catch(() => {/* non-fatal */})
+      const applyPayload = {
+        phone,
+        businessName: businessName.trim(),
+        businessType,
+        businessDescription: businessDescription.trim(),
+        docType,
+        docFront,
+        docBack,
+        selfie,
       }
-      setStep('done')
+      try {
+        if (props.mode === 'new') {
+          const r = await registerNewVerifiedSeller({
+            fullName, email, password, address, city, phone, nicImageDataUrl: docFront,
+          })
+          if (r === 'email_taken') {
+            setRegError(t('onboard.errEmailTaken'))
+            setAmlRunning(false)
+            setStep('account')
+            return
+          }
+        }
+        await api.post('/seller/apply', applyPayload)
+        setStep('done')
+      } catch (err) {
+        setDocError(err instanceof Error ? err.message : 'Failed to submit application. Please try again.')
+        setAmlRunning(false)
+        setStep('nic')
+      }
     }, 2600)
   }
 
-  function onNicFileChange(files: FileList | null) {
+  /** Downscale to ≤1600px JPEG so payloads stay small (well under server & DB caps) */
+  function compressImage(dataUrl: string): Promise<string> {
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.onload = () => {
+        const maxDim = 1600
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height))
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.round(img.width * scale)
+        canvas.height = Math.round(img.height * scale)
+        const ctx = canvas.getContext('2d')
+        if (!ctx) { resolve(dataUrl); return }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        resolve(canvas.toDataURL('image/jpeg', 0.86))
+      }
+      img.onerror = () => resolve(dataUrl)
+      img.src = dataUrl
+    })
+  }
+
+  function onDocFileChange(slot: DocSlot, files: FileList | null) {
+    setDocError(null)
     const file = files?.[0]
-    if (!file || !file.type.startsWith('image/')) { setNicDataUrl(null); return }
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setDocError('Only image files (JPG, PNG, WEBP) are accepted.')
+      return
+    }
+    if (file.size > MAX_DOC_BYTES) {
+      setDocError('Each image must be under 6 MB. Please compress and retry.')
+      return
+    }
     const reader = new FileReader()
-    reader.onload = () => { if (typeof reader.result === 'string') setNicDataUrl(reader.result) }
+    reader.onload = async () => {
+      if (typeof reader.result !== 'string') return
+      const compressed = await compressImage(reader.result)
+      if (slot === 'front')  setDocFront(compressed)
+      if (slot === 'back')   setDocBack(compressed)
+      if (slot === 'selfie') setSelfie(compressed)
+    }
     reader.readAsDataURL(file)
+  }
+
+  function clearDoc(slot: DocSlot) {
+    if (slot === 'front')  { setDocFront(null);  if (frontRef.current)  frontRef.current.value = '' }
+    if (slot === 'back')   { setDocBack(null);   if (backRef.current)   backRef.current.value = '' }
+    if (slot === 'selfie') { setSelfie(null);    if (selfieRef.current) selfieRef.current.value = '' }
   }
 
   function tlStatus(id: Step): 'done' | 'active' | 'pending' {
@@ -534,52 +593,119 @@ export function SellerKycWizard(props: Props) {
             </>
           )}
 
-          {/* ── STEP: NIC Upload ── */}
+          {/* ── STEP: Identity Documents (ID front + back + selfie) ── */}
           {step === 'nic' && (
             <>
-              <h2 className="ob-role__panel-heading">Identity document</h2>
-              <p className="ob-role__panel-sub">Upload a clear photo of your NIC or passport.</p>
+              <h2 className="ob-role__panel-heading">Identity verification</h2>
+              <p className="ob-role__panel-sub">
+                Upload both sides of your ID and a selfie. An admin reviews these before your seller account is activated.
+              </p>
 
               <form className="ob-form" onSubmit={onNicNext} noValidate>
-                <div className="ob-hint">
-                  <IdCard size={13} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
-                  {t('onboard.nicHint')}
+                {docError && (
+                  <p role="alert" className="ob-alert">
+                    <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+                    {docError}
+                  </p>
+                )}
+
+                {/* Document type selector */}
+                <div className="kyc-doctype" role="radiogroup" aria-label="Identity document type">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={docType === 'nic'}
+                    className={`kyc-doctype__opt${docType === 'nic' ? ' kyc-doctype__opt--active' : ''}`}
+                    onClick={() => setDocType('nic')}
+                  >
+                    <IdCard size={18} />
+                    <span>
+                      <strong>National ID (NIC)</strong>
+                      <small>Government-issued identity card</small>
+                    </span>
+                    {docType === 'nic' && <Check size={15} className="kyc-doctype__check" />}
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={docType === 'driving_license'}
+                    className={`kyc-doctype__opt${docType === 'driving_license' ? ' kyc-doctype__opt--active' : ''}`}
+                    onClick={() => setDocType('driving_license')}
+                  >
+                    <CreditCard size={18} />
+                    <span>
+                      <strong>Driving License</strong>
+                      <small>Valid, unexpired license</small>
+                    </span>
+                    {docType === 'driving_license' && <Check size={15} className="kyc-doctype__check" />}
+                  </button>
                 </div>
 
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={(e) => onNicFileChange(e.target.files)}
-                />
+                {/* Hidden file inputs */}
+                <input ref={frontRef}  type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => onDocFileChange('front',  e.target.files)} />
+                <input ref={backRef}   type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => onDocFileChange('back',   e.target.files)} />
+                <input ref={selfieRef} type="file" accept="image/jpeg,image/png,image/webp" hidden capture="user" onChange={(e) => onDocFileChange('selfie', e.target.files)} />
 
-                <button
-                  type="button"
-                  className={`ob-upload-zone${nicDataUrl ? ' ob-upload-zone--uploaded' : ''}`}
-                  onClick={() => fileRef.current?.click()}
-                  aria-label="Upload identity document"
-                >
-                  <div className="ob-upload-icon-wrap">
-                    {nicDataUrl ? <CheckCircle2 size={24} /> : <IdCard size={24} />}
-                  </div>
-                  <p className="ob-upload-title">
-                    {nicDataUrl ? 'Document uploaded' : 'Tap to upload your NIC'}
-                  </p>
-                  <p className="ob-upload-sub">
-                    {nicDataUrl ? 'Tap to change the file' : 'PNG, JPG or JPEG — max 10 MB'}
-                  </p>
-                  {nicDataUrl && (
-                    <div className="ob-nic-preview">
-                      <img src={nicDataUrl} alt="NIC preview" />
+                {/* Upload slots */}
+                <div className="kyc-docs">
+                  {([
+                    { slot: 'front' as DocSlot, ref: frontRef, value: docFront, icon: <IdCard size={20} />, title: `${docType === 'nic' ? 'NIC' : 'License'} — Front side`, sub: 'All corners visible, no glare' },
+                    { slot: 'back' as DocSlot, ref: backRef, value: docBack, icon: <IdCard size={20} />, title: `${docType === 'nic' ? 'NIC' : 'License'} — Back side`, sub: 'Text readable, in focus' },
+                    { slot: 'selfie' as DocSlot, ref: selfieRef, value: selfie, icon: <Camera size={20} />, title: 'Selfie photo', sub: 'Good lighting, face clearly visible' },
+                  ]).map(({ slot, ref, value, icon, title, sub }) => (
+                    <div key={slot} className={`kyc-doc${value ? ' kyc-doc--done' : ''}`}>
+                      {value ? (
+                        <div className="kyc-doc__preview-wrap">
+                          <img src={value} alt={title} className="kyc-doc__preview" />
+                          <button
+                            type="button"
+                            className="kyc-doc__remove"
+                            aria-label={`Remove ${title}`}
+                            onClick={() => clearDoc(slot)}
+                          >
+                            <X size={13} />
+                          </button>
+                          <span className="kyc-doc__done-tag"><CheckCircle2 size={12} /> Uploaded</span>
+                        </div>
+                      ) : (
+                        <button type="button" className="kyc-doc__drop" onClick={() => ref.current?.click()}>
+                          <span className="kyc-doc__drop-icon">{icon}</span>
+                        </button>
+                      )}
+                      <div className="kyc-doc__meta">
+                        <p className="kyc-doc__title">{title}</p>
+                        <p className="kyc-doc__sub">{sub}</p>
+                        <button type="button" className="kyc-doc__action" onClick={() => ref.current?.click()}>
+                          {value ? 'Replace photo' : 'Upload photo'}
+                        </button>
+                      </div>
                     </div>
-                  )}
+                  ))}
+                </div>
+
+                {/* Selfie lighting guidance */}
+                <div className="kyc-guide">
+                  <Sun size={14} />
+                  <span>
+                    <strong>Selfie tips:</strong> face a window or light source, remove hats and sunglasses,
+                    and make sure your whole face is inside the frame. Blurry or dark photos will be rejected.
+                  </span>
+                </div>
+
+                <div className="kyc-progress" aria-hidden="true">
+                  <div className="kyc-progress__bar" style={{ width: `${([docFront, docBack, selfie].filter(Boolean).length / 3) * 100}%` }} />
+                  <span className="kyc-progress__label">{[docFront, docBack, selfie].filter(Boolean).length} of 3 documents ready</span>
+                </div>
+
+                <button type="submit" className="ob-btn" disabled={!allDocsUploaded}>
+                  <Shield size={17} />
+                  Submit for verification
                 </button>
 
-                <button type="submit" className="ob-btn" disabled={!nicDataUrl}>
-                  <Shield size={17} />
-                  {t('onboard.submitKyc')}
-                </button>
+                <p className="kyc-privacy">
+                  <Lock size={12} />
+                  Your documents are encrypted, visible only to the BidZone verification team, and never shared.
+                </p>
               </form>
             </>
           )}

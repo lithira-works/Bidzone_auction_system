@@ -4,6 +4,7 @@ import { UserModel } from '@/models/User'
 import { requireAuth, signToken } from '@/lib/auth'
 import { syncAdminRole } from '@/lib/admin'
 import { toUserProfile } from '@/lib/userProfile'
+import { checkAccountRestriction } from '@/lib/accountStatus'
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,6 +18,14 @@ export async function GET(req: NextRequest) {
     const user = await UserModel.findById(claims.userId)
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    /* Admins are exempt — this check is only meaningful for bidders/sellers */
+    if (user.role !== 'admin') {
+      const restriction = await checkAccountRestriction(user)
+      if (restriction) {
+        return NextResponse.json({ error: restriction.reason, ...restriction }, { status: 403 })
+      }
     }
 
     const roleBefore = user.role

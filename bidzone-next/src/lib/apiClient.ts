@@ -17,6 +17,18 @@ export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY)
 }
 
+/** Thrown by `request()` — carries the full parsed error body alongside a message. */
+export class ApiError extends Error {
+  status: number
+  body: Record<string, unknown>
+  constructor(message: string, status: number, body: Record<string, unknown>) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.body = body
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken()
   const headers: Record<string, string> = {
@@ -29,13 +41,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     let errMsg = `HTTP ${res.status}`
+    let body: Record<string, unknown> = {}
     try {
-      const body = (await res.json()) as { error?: string }
-      if (body.error) errMsg = body.error
+      body = (await res.json()) as Record<string, unknown>
+      if (typeof body.error === 'string' && body.error) errMsg = body.error
     } catch {
       /* fallback to status text */
     }
-    throw new Error(errMsg)
+    throw new ApiError(errMsg, res.status, body)
   }
 
   return res.json() as Promise<T>

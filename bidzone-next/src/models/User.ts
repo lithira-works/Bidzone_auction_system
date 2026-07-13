@@ -25,8 +25,27 @@ export interface IUser extends Document {
   kycSubmittedAt: Date | null
   /** Admin notes shown to seller on approval/rejection */
   kycNotes: string
+  /* ── KYC identity documents (data URLs, admin-eyes only) ── */
+  kycDocType: 'nic' | 'driving_license' | ''
+  kycDocFront: string
+  kycDocBack: string
+  kycSelfie: string
+  kycReviewedAt: Date | null
+  /** Email of the admin who made the last KYC decision (audit trail) */
+  kycReviewedBy: string
   /** BidZone Currency wallet balance (whole BC units) */
   bcBalance: number
+  /* ── Moderation: bans, temporary suspensions & privilege restrictions ── */
+  accountStatus: 'active' | 'banned' | 'suspended'
+  /** Suspension expiry — account auto-reinstates once this passes */
+  suspendedUntil: Date | null
+  /** Reason shown to the user for the current ban/suspension */
+  statusReason: string
+  statusUpdatedAt: Date | null
+  /** Email of the admin who applied the last status change (audit trail) */
+  statusUpdatedBy: string
+  /** Independently revokes buyer privileges (bidding, coin purchases) without a full ban */
+  biddingBlocked: boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -60,7 +79,20 @@ const UserSchema = new Schema<IUser>(
     businessDescription: { type: String, default: '', trim: true },
     kycSubmittedAt: { type: Date, default: null },
     kycNotes: { type: String, default: '', trim: true },
+    kycDocType: { type: String, enum: ['nic', 'driving_license', ''], default: '' },
+    /* select:false — documents never leave the DB unless explicitly requested by admin routes */
+    kycDocFront: { type: String, default: '', select: false },
+    kycDocBack: { type: String, default: '', select: false },
+    kycSelfie: { type: String, default: '', select: false },
+    kycReviewedAt: { type: Date, default: null },
+    kycReviewedBy: { type: String, default: '', trim: true },
     bcBalance: { type: Number, default: 0, min: 0 },
+    accountStatus: { type: String, enum: ['active', 'banned', 'suspended'], default: 'active' },
+    suspendedUntil: { type: Date, default: null },
+    statusReason: { type: String, default: '', trim: true },
+    statusUpdatedAt: { type: Date, default: null },
+    statusUpdatedBy: { type: String, default: '', trim: true },
+    biddingBlocked: { type: Boolean, default: false },
   },
   { timestamps: true },
 )

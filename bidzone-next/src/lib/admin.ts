@@ -118,6 +118,12 @@ export function toAdminUserSummary(user: IUser) {
     businessDescription: user.businessDescription ?? '',
     kycSubmittedAt: user.kycSubmittedAt ? user.kycSubmittedAt.toISOString() : null,
     kycNotes: user.kycNotes ?? '',
+    accountStatus: user.accountStatus ?? 'active',
+    suspendedUntil: user.suspendedUntil ? user.suspendedUntil.toISOString() : null,
+    statusReason: user.statusReason ?? '',
+    statusUpdatedAt: user.statusUpdatedAt ? user.statusUpdatedAt.toISOString() : null,
+    statusUpdatedBy: user.statusUpdatedBy ?? '',
+    biddingBlocked: user.biddingBlocked ?? false,
   }
 }
 

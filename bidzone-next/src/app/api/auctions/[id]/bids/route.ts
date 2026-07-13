@@ -6,6 +6,7 @@ import { BidModel } from '@/models/Bid'
 import { requireAuth } from '@/lib/auth'
 import { UserModel } from '@/models/User'
 import { CoinTransactionModel } from '@/models/Coin'
+import { checkBuyerAllowed } from '@/lib/accountStatus'
 
 function txRef(prefix: string) {
   return `${prefix}-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`
@@ -82,6 +83,12 @@ export async function POST(req: NextRequest, { params }: Params) {
     if (!bidder) {
       return NextResponse.json({ error: 'Account not found' }, { status: 404 })
     }
+
+    const restriction = await checkBuyerAllowed(bidder)
+    if (restriction) {
+      return NextResponse.json({ error: restriction.reason, code: restriction.code }, { status: 403 })
+    }
+
     const userName = bidder.fullName ?? 'Bidder'
 
     /* ═══ BIDZONE CURRENCY (BC) ESCROW ═══

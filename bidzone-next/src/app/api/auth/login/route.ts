@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { connectToDatabase, isDbConnectionError } from '@/lib/mongodb'
 import { UserModel } from '@/models/User'
 import { buildAuthResponse } from '@/lib/authResponse'
+import { checkAccountRestriction } from '@/lib/accountStatus'
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,6 +24,11 @@ export async function POST(req: NextRequest) {
     const valid = await bcrypt.compare(password, user.passwordHash)
     if (!valid) {
       return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 })
+    }
+
+    const restriction = await checkAccountRestriction(user)
+    if (restriction) {
+      return NextResponse.json({ error: restriction.reason, ...restriction }, { status: 403 })
     }
 
     return NextResponse.json(await buildAuthResponse(user))

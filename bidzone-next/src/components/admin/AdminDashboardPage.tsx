@@ -25,6 +25,10 @@ import {
   Eye,
   EyeOff,
   Coins,
+  ShieldAlert,
+  ShieldOff,
+  Clock,
+  ShoppingCart,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { api } from '@/lib/apiClient'
@@ -32,6 +36,8 @@ import { AdminAdminsPanel } from '@/components/admin/AdminAdminsPanel'
 import { AdminBannersPanel } from '@/components/admin/AdminBannersPanel'
 import { AdminListingsPanel } from '@/components/admin/AdminListingsPanel'
 import { AdminCoinsPanel } from '@/components/admin/AdminCoinsPanel'
+import { AdminKycPanel } from '@/components/admin/AdminKycPanel'
+import { AdminUserModerationModal } from '@/components/admin/AdminUserModerationModal'
 import type { AdminStatsResponse, AdminTab, AdminUserRow } from '@/types/admin'
 
 function formatMoney(n: number) {
@@ -68,6 +74,20 @@ function RoleBadge({ role }: { role: string }) {
   return <span className={cls}>{role}</span>
 }
 
+function AccountStatusBadge({ user }: { user: AdminUserRow }) {
+  const status = user.accountStatus ?? 'active'
+  if (status === 'banned') {
+    return <span className="adm__status-pill adm__status-pill--banned"><ShieldOff size={11} /> Banned</span>
+  }
+  if (status === 'suspended') {
+    return <span className="adm__status-pill adm__status-pill--suspended"><Clock size={11} /> Suspended</span>
+  }
+  if (user.biddingBlocked) {
+    return <span className="adm__status-pill adm__status-pill--blocked"><ShoppingCart size={11} /> Bidding blocked</span>
+  }
+  return <span className="adm__status-pill adm__status-pill--active">Active</span>
+}
+
 const NAV: { id: AdminTab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'users', label: 'Users', icon: Users },
@@ -88,7 +108,7 @@ export function AdminDashboardPage() {
   const [users, setUsers] = useState<AdminUserRow[]>([])
   const [userQuery, setUserQuery] = useState('')
   const [actionId, setActionId] = useState<string | null>(null)
-  const [kycNotes, setKycNotes] = useState<Record<string, string>>({})
+  const [moderatingUser, setModeratingUser] = useState<AdminUserRow | null>(null)
 
   /* Create Seller modal state */
   const [showCreateSeller, setShowCreateSeller] = useState(false)
@@ -128,7 +148,6 @@ export function AdminDashboardPage() {
     try {
       await loadStats()
       if (tab === 'users') await loadUsers({ q: userQuery || undefined })
-      if (tab === 'kyc') await loadUsers({ kycStatus: 'pending' })
     } catch {
       setError('Failed to load admin data. Check your connection and permissions.')
     } finally {
@@ -150,18 +169,6 @@ export function AdminDashboardPage() {
     } finally {
       setActionId(null)
     }
-  }
-
-  async function approveKyc(id: string) {
-    await patchUser(id, { kycStatus: 'verified', kycNotes: kycNotes[id] ?? '' })
-  }
-
-  async function rejectKyc(id: string) {
-    if (!(kycNotes[id] ?? '').trim()) {
-      setError('Please add a rejection reason before rejecting.')
-      return
-    }
-    await patchUser(id, { kycStatus: 'rejected', kycNotes: kycNotes[id] ?? '' })
   }
 
   function handleSignOut() {
@@ -435,7 +442,7 @@ export function AdminDashboardPage() {
                           <th>User</th>
                           <th>Role</th>
                           <th>Verification</th>
-                          <th>Listing</th>
+                          <th>Status</th>
                           <th>Joined</th>
                           <th>Actions</th>
                         </tr>
@@ -449,7 +456,7 @@ export function AdminDashboardPage() {
                             </td>
                             <td><RoleBadge role={u.role} /></td>
                             <td><KycBadge status={u.kycStatus} /></td>
-                            <td>{u.listingAllowed ? 'Allowed' : 'Blocked'}</td>
+                            <td><AccountStatusBadge user={u} /></td>
                             <td>{formatDate(u.createdAt)}</td>
                             <td>
                               {u.role !== 'admin' && (
@@ -476,6 +483,14 @@ export function AdminDashboardPage() {
                                       </button>
                                     </>
                                   )}
+                                  <button
+                                    type="button"
+                                    className="adm__icon-btn"
+                                    title="Manage user (ban / suspend / warn / roles)"
+                                    onClick={() => setModeratingUser(u)}
+                                  >
+                                    <ShieldAlert size={16} />
+                                  </button>
                                 </div>
                               )}
                             </td>
@@ -489,109 +504,7 @@ export function AdminDashboardPage() {
             )}
 
             {tab === 'kyc' && (
-              <div className="adm__panel">
-                <p className="adm__hint">
-                  Seller applications appear here for identity review. Review the business profile and identity document,
-                  then approve to grant listing access or reject with a reason. Sellers are notified automatically.
-                </p>
-                <div className="adm__card adm__card--flush">
-                  {users.length === 0 ? (
-                    <div className="adm__empty">
-                      <ShieldCheck size={40} strokeWidth={1.25} />
-                      <p>No sellers awaiting verification</p>
-                    </div>
-                  ) : (
-                    <div className="adm__kyc-list">
-                      {users.map((u) => (
-                        <article key={u.id} className="adm__kyc-card">
-                          <div className="adm__kyc-card-head">
-                            <div className="adm__kyc-avatar">
-                              {(u.fullName || 'U').slice(0, 2).toUpperCase()}
-                            </div>
-                            <div className="adm__kyc-info">
-                              <h3>{u.fullName}</h3>
-                              <p>{u.email}</p>
-                              <div className="adm__kyc-meta">
-                                <span>📞 {u.phone || '—'}</span>
-                                <span>📍 {u.city || '—'}</span>
-                                <KycBadge status={u.kycStatus} />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Business profile section */}
-                          {(u.businessName || u.businessType || u.businessDescription) && (
-                            <div className="adm__kyc-business">
-                              <div className="adm__kyc-business-head">
-                                <span className="adm__kyc-business-label">Business Profile</span>
-                                {u.businessType && (
-                                  <span className="adm__kyc-business-type">
-                                    {u.businessType === 'individual' ? '👤 Individual' :
-                                     u.businessType === 'registered_business' ? '🏢 Registered Business' :
-                                     '🤝 Cooperative'}
-                                  </span>
-                                )}
-                              </div>
-                              {u.businessName && (
-                                <p className="adm__kyc-business-name">{u.businessName}</p>
-                              )}
-                              {u.businessDescription && (
-                                <p className="adm__kyc-business-desc">{u.businessDescription}</p>
-                              )}
-                              {u.kycSubmittedAt && (
-                                <p className="adm__kyc-submitted">
-                                  Applied: {formatDate(u.kycSubmittedAt)}
-                                </p>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Previous admin notes */}
-                          {u.kycNotes && (
-                            <div className="adm__kyc-prev-notes">
-                              <span>Previous note:</span> {u.kycNotes}
-                            </div>
-                          )}
-
-                          {/* Rejection/approval note input */}
-                          <div className="adm__kyc-note-wrap">
-                            <label className="adm__kyc-note-label" htmlFor={`kyc-note-${u.id}`}>
-                              Admin note <span style={{ color: 'var(--bz-text-muted)', fontWeight: 400 }}>(required for rejection, optional for approval)</span>
-                            </label>
-                            <textarea
-                              id={`kyc-note-${u.id}`}
-                              className="adm__kyc-note-input"
-                              rows={2}
-                              placeholder="Add a note that will be sent to the seller…"
-                              value={kycNotes[u.id] ?? ''}
-                              onChange={(e) => setKycNotes(prev => ({ ...prev, [u.id]: e.target.value }))}
-                            />
-                          </div>
-
-                          <div className="adm__kyc-actions">
-                            <button
-                              type="button"
-                              className="adm__btn adm__btn--ok"
-                              disabled={actionId === u.id}
-                              onClick={() => void approveKyc(u.id)}
-                            >
-                              <CheckCircle2 size={16} /> Approve Seller
-                            </button>
-                            <button
-                              type="button"
-                              className="adm__btn adm__btn--err"
-                              disabled={actionId === u.id}
-                              onClick={() => void rejectKyc(u.id)}
-                            >
-                              <XCircle size={16} /> Reject
-                            </button>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <AdminKycPanel onError={setError} onDecided={() => void loadStats()} />
             )}
 
             {tab === 'auctions' && (
@@ -807,6 +720,17 @@ export function AdminDashboardPage() {
             )}
           </div>
         </div>
+      )}
+
+      {moderatingUser && (
+        <AdminUserModerationModal
+          user={moderatingUser}
+          onClose={() => setModeratingUser(null)}
+          onDone={() => {
+            void loadUsers({ q: userQuery || undefined })
+            void loadStats()
+          }}
+        />
       )}
     </div>
   )

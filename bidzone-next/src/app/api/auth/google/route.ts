@@ -4,6 +4,7 @@ import { connectToDatabase, isDbConnectionError } from '@/lib/mongodb'
 import { UserModel } from '@/models/User'
 import { buildAuthResponse } from '@/lib/authResponse'
 import { isAdminEmail } from '@/lib/admin'
+import { checkAccountRestriction } from '@/lib/accountStatus'
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,9 +40,15 @@ export async function POST(req: NextRequest) {
         fraudCheckPassed: false,
         avatarUrl: picture ?? null,
       })
-    } else if (picture && user.avatarUrl !== picture) {
-      user.avatarUrl = picture
-      await user.save()
+    } else {
+      const restriction = await checkAccountRestriction(user)
+      if (restriction) {
+        return NextResponse.json({ error: restriction.reason, ...restriction }, { status: 403 })
+      }
+      if (picture && user.avatarUrl !== picture) {
+        user.avatarUrl = picture
+        await user.save()
+      }
     }
 
     return NextResponse.json(await buildAuthResponse(user))
