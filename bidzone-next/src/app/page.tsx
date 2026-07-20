@@ -5,15 +5,17 @@ import { useAuth } from '@/context/AuthContext'
 import { LoginPage } from '@/components/layout/LoginPage'
 
 export default function RootPage() {
-  const { isAuthenticated } = useAuth()
+  const { authReady, isAuthenticated } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
+    if (!authReady) return
     if (isAuthenticated) {
       router.replace('/home')
     }
-  }, [isAuthenticated, router])
+  }, [authReady, isAuthenticated, router])
 
+  if (!authReady) return null
   if (isAuthenticated) return null
 
   return <LoginPage />

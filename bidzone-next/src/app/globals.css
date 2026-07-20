@@ -4126,6 +4126,26 @@ select {
   color: var(--bz-text);
 }
 
+.adm__boot {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  background: var(--bz-dash-bg);
+}
+
+.adm__boot-spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid rgba(240, 180, 41, 0.2);
+  border-top-color: #f0b429;
+  animation: adm-boot-spin 0.75s linear infinite;
+}
+
+@keyframes adm-boot-spin {
+  to { transform: rotate(360deg); }
+}
+
 .adm__sidebar {
   width: 260px;
   flex-shrink: 0;

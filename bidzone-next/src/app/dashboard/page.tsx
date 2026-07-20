@@ -5,17 +5,19 @@ import { useAuth } from '@/context/AuthContext'
 import { SellerDashboardPage } from '@/components/layout/SellerDashboardPage'
 
 export default function DashboardRoute() {
-  const { isAuthenticated, user } = useAuth()
+  const { authReady, isAuthenticated, user } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
+    if (!authReady) return
     if (!isAuthenticated) {
       router.replace('/')
     } else if (user?.role === 'admin') {
       router.replace('/admin')
     }
-  }, [isAuthenticated, user, router])
+  }, [authReady, isAuthenticated, user, router])
 
+  if (!authReady) return null
   if (!isAuthenticated) return null
   if (!user) return null
   if (user.role === 'admin') return null

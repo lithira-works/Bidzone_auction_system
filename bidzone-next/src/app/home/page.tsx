@@ -5,15 +5,17 @@ import { useAuth } from '@/context/AuthContext'
 import { HomePage } from '@/components/layout/HomePage'
 
 function HomePageRouteInner() {
-  const { isAuthenticated } = useAuth()
+  const { authReady, isAuthenticated } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
+    if (!authReady) return
     if (!isAuthenticated) {
       router.replace('/')
     }
-  }, [isAuthenticated, router])
+  }, [authReady, isAuthenticated, router])
 
+  if (!authReady) return null
   if (!isAuthenticated) return null
 
   return <HomePage />

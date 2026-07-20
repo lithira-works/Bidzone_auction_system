@@ -56,6 +56,8 @@ export type SellerRegisterInput = {
 
 type AuthContextValue = {
   user: UserProfile | null
+  /** False until the initial token/session bootstrap finishes (avoids redirect flashes on refresh). */
+  authReady: boolean
   isAuthenticated: boolean
   isAdmin: boolean
   canAccessSellerTools: boolean
@@ -86,6 +88,7 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null)
+  const [authReady, setAuthReady] = useState(false)
   const [lockInfo, setLockInfo] = useState<AccountLockInfo | null>(null)
 
   const clearLockInfo = useCallback(() => setLockInfo(null), [])
@@ -93,10 +96,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (hasLegacyAuthOnly() && !getSessionUserId()) {
       clearLegacyAuthFlag()
+      setAuthReady(true)
       return
     }
     const token = getToken()
-    if (!token) return
+    if (!token) {
+      setAuthReady(true)
+      return
+    }
 
     api
       .get<{ user: UserProfile; token?: string }>('/auth/me')
@@ -112,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSessionUserId(null)
         clearLegacyAuthFlag()
       })
+      .finally(() => setAuthReady(true))
   }, [])
 
   const login = useCallback(async (email: string, password: string): Promise<'ok' | 'invalid' | 'locked'> => {
@@ -260,6 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       user,
+      authReady,
       isAuthenticated,
       isAdmin,
       canAccessSellerTools,
@@ -276,6 +285,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }),
     [
       user,
+      authReady,
       isAuthenticated,
       isAdmin,
       canAccessSellerTools,
