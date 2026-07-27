@@ -25,6 +25,7 @@ const MODERATION_TITLES: Partial<Record<NotificationItem['kind'], string>> = {
   seller_rejected: 'Seller Application Rejected',
   listing_approved: 'Listing Approved',
   listing_rejected: 'Listing Rejected',
+  listing_removed: 'Listing Removed',
   account_banned: 'Account Banned',
   account_suspended: 'Account Suspended',
   account_reinstated: 'Account Reinstated',
@@ -121,7 +122,7 @@ export function NotificationsPanel({ open, onClose }: Props) {
                   {n.kind === 'won' && <Award size={22} strokeWidth={2.25} />}
                   {n.kind === 'payment' && <CreditCard size={22} strokeWidth={2.25} />}
                   {(n.kind === 'seller_approved' || n.kind === 'listing_approved' || n.kind === 'account_reinstated' || n.kind === 'bidding_restored') && <CheckCircle2 size={22} strokeWidth={2.25} />}
-                  {(n.kind === 'seller_rejected' || n.kind === 'listing_rejected') && <XCircle size={22} strokeWidth={2.25} />}
+                  {(n.kind === 'seller_rejected' || n.kind === 'listing_rejected' || n.kind === 'listing_removed') && <XCircle size={22} strokeWidth={2.25} />}
                   {n.kind === 'account_banned' && <ShieldOff size={22} strokeWidth={2.25} />}
                   {n.kind === 'account_suspended' && <Clock size={22} strokeWidth={2.25} />}
                   {n.kind === 'seller_role_removed' && <UserMinus size={22} strokeWidth={2.25} />}

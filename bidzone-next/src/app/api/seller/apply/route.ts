@@ -4,6 +4,9 @@ import { UserModel } from '@/models/User'
 import { requireAuth } from '@/lib/auth'
 import { toUserProfile } from '@/lib/userProfile'
 import { checkAccountRestriction } from '@/lib/accountStatus'
+import { verifyFirebasePhoneToken } from '@/lib/firebase/verifyIdToken'
+import { normalizePhoneE164 } from '@/lib/phoneFormat'
+import { isFirebaseConfigured } from '@/lib/firebase/config'
 
 /* ── KYC document validation ──
    Images arrive as base64 data URLs. Enforce an allowlisted mime type and a
@@ -55,6 +58,8 @@ export async function POST(req: NextRequest) {
       docFront?: string
       docBack?: string
       selfie?: string
+      /** Firebase Phone Auth ID token — required when Firebase OTP is enabled */
+      firebaseIdToken?: string
     }
 
     if (!body.businessName?.trim()) {
@@ -98,6 +103,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Your application is already under review' }, { status: 409 })
     }
 
+    const phoneRaw = body.phone?.trim() ?? ''
+    const phoneE164 = phoneRaw ? normalizePhoneE164(phoneRaw) : null
+    if (!phoneE164) {
+      return NextResponse.json({ error: 'A valid phone number is required' }, { status: 400 })
+    }
+
+    let phoneVerified = false
+    if (isFirebaseConfigured()) {
+      if (!body.firebaseIdToken?.trim()) {
+        return NextResponse.json({ error: 'Phone must be verified with SMS before submitting' }, { status: 400 })
+      }
+      const tokenOk = await verifyFirebasePhoneToken(body.firebaseIdToken.trim(), phoneE164)
+      if (!tokenOk) {
+        return NextResponse.json({ error: 'Phone verification expired. Verify your number again.' }, { status: 403 })
+      }
+      phoneVerified = true
+    }
+
     const allowedTypes = ['individual', 'registered_business', 'cooperative', '']
     const businessType = allowedTypes.includes(body.businessType ?? '')
       ? (body.businessType ?? 'individual')
@@ -108,7 +131,8 @@ export async function POST(req: NextRequest) {
       kycStatus: 'pending',
       listingAllowed: false,
       fraudCheckPassed: false,
-      phoneVerified: false,
+      phoneVerified,
+      phone: phoneE164,
       businessName: body.businessName.trim(),
       businessType,
       businessDescription: (body.businessDescription ?? '').trim(),
@@ -120,10 +144,6 @@ export async function POST(req: NextRequest) {
       kycSelfie: body.selfie,
       kycReviewedAt: null,
       kycReviewedBy: '',
-    }
-
-    if (body.phone?.trim()) {
-      updates.phone = body.phone.trim()
     }
 
     const updated = await UserModel.findByIdAndUpdate(

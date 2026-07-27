@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -12,8 +12,12 @@ import { useAuth } from '@/context/AuthContext'
 import { useI18n } from '@/context/I18nContext'
 import { useHelp } from '@/context/HelpContext'
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher'
+import { PhoneCountryInput } from '@/components/ui/PhoneCountryInput'
 import { DEMO_OTP_CODE, type UserProfile } from '@/types/userProfile'
 import { api } from '@/lib/apiClient'
+import { useFirebasePhoneOtp } from '@/hooks/useFirebasePhoneOtp'
+import { DEFAULT_COUNTRY_CODE, FALLBACK_COUNTRIES, fetchCountryDialCodes, findCountryByCode, type CountryDialOption } from '@/lib/countries'
+import { toE164 } from '@/lib/phoneFormat'
 
 type Step = 'account' | 'business' | 'phone' | 'otp' | 'nic' | 'aml' | 'done'
 
@@ -57,10 +61,11 @@ const BUSINESS_TYPES = [
 ]
 
 export function SellerKycWizard(props: Props) {
-  const { registerNewVerifiedSeller } = useAuth()
+  const { registerNewVerifiedSeller, updateUser } = useAuth()
   const { t } = useI18n()
   const { openHelp } = useHelp()
   const router = useRouter()
+  const phoneOtp = useFirebasePhoneOtp()
 
   const initialStep: Step = props.mode === 'new' ? 'account' : 'business'
   const [step, setStep] = useState<Step>(initialStep)
@@ -78,8 +83,11 @@ export function SellerKycWizard(props: Props) {
   const [businessDescription, setBusinessDescription] = useState(props.mode === 'upgrade' ? (props.bidder.businessDescription ?? '') : '')
 
   /* Phone / OTP */
-  const [phone,      setPhone]      = useState('')
-  const [otp,        setOtp]        = useState('')
+  const [phoneCountry, setPhoneCountry] = useState(DEFAULT_COUNTRY_CODE)
+  const [phoneNational, setPhoneNational] = useState('')
+  const [phone, setPhone] = useState('') /* E.164 after send */
+  const [countries, setCountries] = useState<CountryDialOption[]>(FALLBACK_COUNTRIES)
+  const [otp, setOtp] = useState('')
   const [showPw,     setShowPw]     = useState(false)
   const [otpError,   setOtpError]   = useState<string | null>(null)
   const [regError,   setRegError]   = useState<string | null>(null)
@@ -98,6 +106,23 @@ export function SellerKycWizard(props: Props) {
 
   const steps  = props.mode === 'new' ? NEW_STEPS : UPGRADE_STEPS
   const curIdx = STEP_ORDER.indexOf(step)
+
+  function resolvePhoneE164(): string | null {
+    const country = findCountryByCode(phoneCountry, countries)
+    if (!country) return null
+    return toE164(phoneNational, country.dial)
+  }
+
+  useEffect(() => {
+    void fetchCountryDialCodes().then(setCountries)
+  }, [])
+
+  useEffect(() => {
+    if (step === 'phone' && phoneOtp.configured) {
+      void phoneOtp.initRecaptcha()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- init when entering phone step only
+  }, [step, phoneOtp.configured])
 
   function stepStatus(s: StepDef): 'done' | 'active' | 'pending' {
     const si = STEP_ORDER.indexOf(s.id)
@@ -118,19 +143,59 @@ export function SellerKycWizard(props: Props) {
     setStep('phone')
   }
 
-  function onPhoneNext(e: React.FormEvent) {
+  async function onPhoneNext(e: React.FormEvent) {
     e.preventDefault()
-    if (!phone.trim()) return
+    const e164 = resolvePhoneE164()
+    if (!e164) {
+      setOtpError('Enter a valid mobile number for the selected country.')
+      return
+    }
     setOtpError(null)
+    phoneOtp.clearError()
+
+    if (phoneOtp.configured) {
+      const normalized = await phoneOtp.sendOtp(e164)
+      if (!normalized) {
+        setOtpError(phoneOtp.error)
+        return
+      }
+      setPhone(normalized)
+    } else {
+      setPhone(e164)
+    }
+
     setStep('otp')
   }
 
-  function onOtpSubmit(e: React.FormEvent) {
+  async function onOtpSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (otp.trim() !== DEMO_OTP_CODE) {
+    setOtpError(null)
+    phoneOtp.clearError()
+
+    if (phoneOtp.configured) {
+      const ok = await phoneOtp.verifyOtp(otp)
+      if (!ok) {
+        setOtpError(phoneOtp.error)
+        return
+      }
+
+      if (props.mode === 'upgrade' && phoneOtp.idToken) {
+        try {
+          const { user: u } = await api.post<{ user: UserProfile }>('/auth/verify-phone', {
+            idToken: phoneOtp.idToken,
+            phone,
+          })
+          updateUser(u)
+        } catch (err) {
+          setOtpError(err instanceof Error ? err.message : 'Phone verification failed')
+          return
+        }
+      }
+    } else if (otp.trim() !== DEMO_OTP_CODE) {
       setOtpError(t('onboard.otpWrong'))
       return
     }
+
     setOtpError(null)
     setStep('nic')
   }
@@ -153,6 +218,7 @@ export function SellerKycWizard(props: Props) {
         docFront,
         docBack,
         selfie,
+        firebaseIdToken: phoneOtp.idToken ?? undefined,
       }
       try {
         if (props.mode === 'new') {
@@ -523,29 +589,45 @@ export function SellerKycWizard(props: Props) {
               <h2 className="ob-role__panel-heading">Phone verification</h2>
               <p className="ob-role__panel-sub">We&apos;ll send a one-time code to confirm your number.</p>
 
-              <form className="ob-form" onSubmit={onPhoneNext} noValidate>
+              <form className="ob-form" onSubmit={(e) => void onPhoneNext(e)} noValidate>
                 <div className="ob-hint">
                   <Shield size={13} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
-                  {t('onboard.phoneHint')}
+                  {phoneOtp.configured
+                    ? 'Select your country, enter your mobile number, complete reCAPTCHA, then send the code.'
+                    : t('onboard.phoneHint')}
                 </div>
 
-                <label className="ob-field">
-                  <span className="ob-label">{t('onboard.phone')}</span>
-                  <div className="ob-input-wrap">
-                    <span className="ob-input-icon"><Phone size={17} /></span>
-                    <input
-                      className="ob-input"
-                      type="tel" required autoFocus
-                      value={phone} onChange={(e) => setPhone(e.target.value)}
-                      autoComplete="tel"
-                      placeholder={t('onboard.phonePh')}
-                    />
-                  </div>
-                </label>
+                <PhoneCountryInput
+                  label={t('onboard.phone')}
+                  countryCode={phoneCountry}
+                  onCountryCodeChange={setPhoneCountry}
+                  nationalNumber={phoneNational}
+                  onNationalNumberChange={setPhoneNational}
+                  disabled={phoneOtp.sending}
+                  autoFocus
+                  placeholder="712345678"
+                />
 
-                <button type="submit" className="ob-btn">
+                {phoneOtp.configured && (
+                  <div className="ob-recaptcha-wrap">
+                    <p className="ob-recaptcha-label">Security verification (required)</p>
+                    <div id={phoneOtp.recaptchaContainerId} className="ob-recaptcha-visible" />
+                    {!phoneOtp.recaptchaReady && (
+                      <p className="ob-recaptcha-hint">Loading reCAPTCHA…</p>
+                    )}
+                  </div>
+                )}
+
+                {(otpError || phoneOtp.error) && (
+                  <p role="alert" className="ob-alert">
+                    <ShieldCheck size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+                    {otpError ?? phoneOtp.error}
+                  </p>
+                )}
+
+                <button type="submit" className="ob-btn" disabled={phoneOtp.sending}>
                   <Phone size={17} />
-                  {t('onboard.sendOtp')}
+                  {phoneOtp.sending ? 'Sending code…' : t('onboard.sendOtp')}
                 </button>
               </form>
             </>
@@ -557,10 +639,17 @@ export function SellerKycWizard(props: Props) {
               <h2 className="ob-role__panel-heading">Enter your code</h2>
               <p className="ob-role__panel-sub">Check your phone for the 6-digit verification code.</p>
 
-              <form className="ob-form" onSubmit={onOtpSubmit} noValidate>
-                <div className="ob-hint">
-                  <strong>Demo:</strong> enter <strong>{DEMO_OTP_CODE}</strong> to continue.
-                </div>
+              <form className="ob-form" onSubmit={(e) => void onOtpSubmit(e)} noValidate>
+                {!phoneOtp.configured && (
+                  <div className="ob-hint">
+                    <strong>Demo:</strong> enter <strong>{DEMO_OTP_CODE}</strong> to continue.
+                  </div>
+                )}
+                {phoneOtp.configured && (
+                  <div className="ob-hint">
+                    Enter the 6-digit code sent to <strong>{phone}</strong>.
+                  </div>
+                )}
 
                 <label className="ob-field">
                   <span className="ob-label" style={{ textAlign: 'center' }}>{t('onboard.otpLabel')}</span>
@@ -578,17 +667,33 @@ export function SellerKycWizard(props: Props) {
                   />
                 </label>
 
-                {otpError && (
+                {(otpError || phoneOtp.error) && (
                   <p role="alert" className="ob-alert">
                     <ShieldCheck size={15} style={{ flexShrink: 0, marginTop: 1 }} />
-                    {otpError}
+                    {otpError ?? phoneOtp.error}
                   </p>
                 )}
 
-                <button type="submit" className="ob-btn">
+                <button type="submit" className="ob-btn" disabled={phoneOtp.verifying}>
                   <ShieldCheck size={17} />
-                  {t('onboard.verifyOtp')}
+                  {phoneOtp.verifying ? 'Verifying…' : t('onboard.verifyOtp')}
                 </button>
+
+                {phoneOtp.configured && (
+                  <button
+                    type="button"
+                    className="ob-btn ob-btn--ghost"
+                    disabled={phoneOtp.sending}
+                    onClick={() => {
+                      setOtp('')
+                      setOtpError(null)
+                      phoneOtp.reset()
+                      setStep('phone')
+                    }}
+                  >
+                    Change number / resend code
+                  </button>
+                )}
               </form>
             </>
           )}

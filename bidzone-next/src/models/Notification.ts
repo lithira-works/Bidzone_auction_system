@@ -17,6 +17,7 @@ export type NotificationKind =
   | 'bidding_blocked'
   | 'bidding_restored'
   | 'admin_warning'
+  | 'listing_removed'
 
 export interface INotification extends Document {
   _id: mongoose.Types.ObjectId
@@ -57,6 +58,7 @@ const NotificationSchema = new Schema<INotification>(
         'bidding_blocked',
         'bidding_restored',
         'admin_warning',
+        'listing_removed',
       ],
       required: true,
     },

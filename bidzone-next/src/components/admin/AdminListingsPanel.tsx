@@ -117,8 +117,8 @@ export function AdminListingsPanel({ onError, actionId, setActionId }: Props) {
     }
   }
 
-  async function remove(id: string) {
-    if (!window.confirm('Delete this listing permanently?')) return
+  async function remove(id: string, title: string) {
+    if (!window.confirm(`Permanently delete "${title}" from the marketplace? This cannot be undone.`)) return
     setActionId(id)
     try {
       await api.delete(`/admin/auctions/${id}`)
@@ -411,15 +411,6 @@ export function AdminListingsPanel({ onError, actionId, setActionId }: Props) {
                             >
                               <Star size={16} fill={row.featured ? 'currentColor' : 'none'} />
                             </button>
-                            <button
-                              type="button"
-                              className="adm__icon-btn adm__icon-btn--err"
-                              title="Delete"
-                              disabled={actionId === row.id}
-                              onClick={() => void remove(row.id)}
-                            >
-                              <Trash2 size={16} />
-                            </button>
                           </div>
                         )}
                         {row.moderationStatus === 'rejected' && (
@@ -433,28 +424,19 @@ export function AdminListingsPanel({ onError, actionId, setActionId }: Props) {
                             >
                               <Pause size={16} />
                             </button>
-                            <button
-                              type="button"
-                              className="adm__icon-btn adm__icon-btn--err"
-                              title="Delete"
-                              disabled={actionId === row.id}
-                              onClick={() => void remove(row.id)}
-                            >
-                              <Trash2 size={16} />
-                            </button>
                           </div>
                         )}
-                        {row.moderationStatus !== 'pending' && row.moderationStatus !== 'approved' && row.moderationStatus !== 'rejected' && (
+                        <div className="adm__row-actions">
                           <button
                             type="button"
                             className="adm__icon-btn adm__icon-btn--err"
-                            title="Delete"
+                            title="Delete from marketplace"
                             disabled={actionId === row.id}
-                            onClick={() => void remove(row.id)}
+                            onClick={() => void remove(row.id, row.title)}
                           >
                             <Trash2 size={16} />
                           </button>
-                        )}
+                        </div>
                       </div>
                     </td>
                   </tr>

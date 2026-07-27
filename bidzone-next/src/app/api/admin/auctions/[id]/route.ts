@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
+import crypto from 'crypto'
 import { connectToDatabase } from '@/lib/mongodb'
 import { requireAdmin } from '@/lib/admin'
 import { toAdminAuctionSummary } from '@/lib/auctionMapper'
 import { AuctionModel } from '@/models/Auction'
 import { BidModel } from '@/models/Bid'
 import { NotificationModel } from '@/models/Notification'
+import { UserModel } from '@/models/User'
+import { CoinTransactionModel } from '@/models/Coin'
 import { formatTimeLeftCompact } from '@/lib/auctionTime'
 import type { AuctionItem } from '@/data/auctions'
 
 type RouteParams = { params: Promise<{ id: string }> }
+
+function txRef(prefix: string) {
+  return `${prefix}-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`
+}
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
@@ -88,6 +95,11 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   }
 }
 
+/**
+ * DELETE /api/admin/auctions/[id]
+ * Permanently removes a marketplace listing (any moderation status).
+ * Releases BC escrow for the current high bidder and notifies the seller.
+ */
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   try {
     const admin = await requireAdmin(req)
@@ -99,14 +111,52 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
     await connectToDatabase()
 
-    const auction = await AuctionModel.findByIdAndDelete(id)
+    const auction = await AuctionModel.findById(id)
     if (!auction) {
       return NextResponse.json({ error: 'Auction not found' }, { status: 404 })
     }
 
-    await BidModel.deleteMany({ auctionId: id })
+    /* Release escrow for the current leading bid (if any) */
+    const topBid = await BidModel.findOne({ auctionId: id }).sort({ amount: -1, placedAt: -1 })
+    if (topBid) {
+      const released = await UserModel.findByIdAndUpdate(
+        topBid.userId,
+        { $inc: { bcBalance: topBid.amount } },
+        { returnDocument: 'after', select: 'bcBalance' },
+      )
+      if (released) {
+        await CoinTransactionModel.create({
+          userId: topBid.userId,
+          type: 'bid_release',
+          bcAmount: topBid.amount,
+          balanceAfter: released.bcBalance,
+          reference: txRef('RLAD'),
+          auctionId: id,
+          auctionTitle: auction.title,
+          status: 'completed',
+          note: 'Listing removed by admin — escrow released',
+        })
+      }
+    }
 
-    return NextResponse.json({ ok: true })
+    await BidModel.deleteMany({ auctionId: id })
+    await CoinTransactionModel.deleteMany({ auctionId: id, type: { $in: ['bid_hold'] } })
+    await AuctionModel.findByIdAndDelete(id)
+
+    if (auction.sellerId) {
+      await NotificationModel.create({
+        userId: auction.sellerId.toString(),
+        kind: 'listing_removed',
+        read: false,
+        meta: {
+          listingTitle: auction.title,
+          message: `Your listing "${auction.title}" was removed from the marketplace by an administrator.`,
+          adminNote: 'If you believe this was a mistake, contact BidZone support.',
+        },
+      })
+    }
+
+    return NextResponse.json({ ok: true, deletedId: id })
   } catch (err) {
     console.error('[/api/admin/auctions/[id] DELETE]', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -23,6 +23,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "bcryptjs": "^3.0.3",
+    "firebase": "^12.16.0",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.14.0",
     "mongoose": "^9.6.3",

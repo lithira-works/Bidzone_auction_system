@@ -27,6 +27,7 @@ export type NotificationKind =
   | 'bidding_blocked'
   | 'bidding_restored'
   | 'admin_warning'
+  | 'listing_removed'
 
 export type NotificationItem = {
   id: string
